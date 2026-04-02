@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Deca-Node: Delivery Route Optimization using TSP solver">
+    <title>Deca-Node — Route Optimizer</title>
+
+    <!-- HTMX via CDN -->
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+
+    <style>
+        /* ── Reset & Base ──────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary:   #0f1117;
+            --bg-surface:   #1a1d27;
+            --bg-card:      #222636;
+            --border:       #2e3348;
+            --text-primary: #e8eaed;
+            --text-muted:   #9aa0b4;
+            --accent:       #6c63ff;
+            --accent-hover: #7f78ff;
+            --accent-glow:  rgba(108, 99, 255, 0.25);
+            --success:      #34d399;
+            --warning:      #fbbf24;
+            --error:        #f87171;
+            --radius:       12px;
+            --transition:   0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* ── Layout ────────────────────────────────────────── */
+        .app-container {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 4rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            padding: 2rem 0;
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        /* ── Card ──────────────────────────────────────────── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card h2 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* ── Coordinate Grid ───────────────────────────────── */
+        .coord-grid {
+            display: grid;
+            gap: 0.65rem;
+        }
+
+        .coord-row {
+            display: grid;
+            grid-template-columns: 36px 1fr 1fr;
+            gap: 0.6rem;
+            align-items: center;
+        }
+
+        .coord-row .stop-num {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent);
+            text-align: center;
+            background: var(--accent-glow);
+            border-radius: 8px;
+            padding: 0.35rem 0;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 0.6rem 0.85rem;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: border-color var(--transition), box-shadow var(--transition);
+            outline: none;
+        }
+
+        input[type="text"]::placeholder {
+            color: var(--text-muted);
+            opacity: 0.6;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        /* ── Buttons ───────────────────────────────────────── */
+        .actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn {
+            padding: 0.7rem 1.6rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            color: #fff;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--accent-hover), #9b7cf6);
+            box-shadow: 0 6px 20px rgba(108, 99, 255, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .btn-ghost:hover {
+            color: var(--text-primary);
+            border-color: var(--text-muted);
+        }
+
+        /* ── HTMX Loading Indicator ────────────────────────── */
+        .htmx-indicator {
+            display: none;
+        }
+
+        .htmx-request .htmx-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ── Result Area ───────────────────────────────────── */
+        #result-area {
+            min-height: 60px;
+        }
+
+        .result-card {
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            animation: fadeSlideUp 0.35s ease-out;
+        }
+
+        .result-success {
+            background: rgba(52, 211, 153, 0.08);
+            border: 1px solid rgba(52, 211, 153, 0.25);
+        }
+
+        .result-error {
+            background: rgba(248, 113, 113, 0.08);
+            border: 1px solid rgba(248, 113, 113, 0.25);
+        }
+
+        .result-card h3 { margin-bottom: 0.5rem; font-size: 1.05rem; }
+        .result-card p  { color: var(--text-muted); font-size: 0.9rem; }
+
+        .coord-table {
+            width: 100%;
+            margin-top: 1rem;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .coord-table th,
+        .coord-table td {
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .coord-table th {
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .hint {
+            margin-top: 1rem;
+            font-style: italic;
+            opacity: 0.7;
+        }
+
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Footer ────────────────────────────────────────── */
+        footer {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            margin-top: 3rem;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+
+    <header>
+        <h1>📦 Deca-Node</h1>
+        <p>Delivery Route Optimization — TSP Solver</p>
+    </header>
+
+    <!-- ── Coordinate Input Form ──────────────────────────── -->
+    <div class="card">
+        <h2>📍 Enter Delivery Stops</h2>
+
+        <form id="route-form"
+              hx-post="/route"
+              hx-target="#result-area"
+              hx-swap="innerHTML"
+              hx-indicator="#loading-indicator">
+
+            <div class="coord-grid">
+                <div class="coord-row">
+                    <span class="stop-num">1</span>
+                    <input type="text" name="lat_1" placeholder="Latitude  (e.g. 6.9271)" id="lat-1">
+                    <input type="text" name="lng_1" placeholder="Longitude (e.g. 79.8612)" id="lng-1">
+                </div>
+                <div class="coord-row">
+                    <span class="stop-num">2</span>
+                    <input type="text" name="lat_2" placeholder="Latitude" id="lat-2">
+                    <input type="text" name="lng_2" placeholder="Longitude" id="lng-2">
+                </div>
+                <div class="coord-row">
+                    <span class="stop-num">3</span>
+                    <input type="text" name="lat_3" placeholder="Latitude" id="lat-3">
+                    <input type="text" name="lng_3" placeholder="Longitude" id="lng-3">
+                </div>
+                <div class="coord-row">
+                    <span class="stop-num">4</span>
+                    <input type="text" name="lat_4" placeholder="Latitude" id="lat-4">
+                    <input type="text" name="lng_4" placeholder="Longitude" id="lng-4">
+                </div>
+                <div class="coord-row">
+                    <span class="stop-num">5</span>
+                    <input type="text" name="lat_5" placeholder="Latitude" id="lat-5">
+                    <input type="text" name="lng_5" placeholder="Longitude" id="lng-5">
+                </div>
+                <div class="coord-row">
+                    <span class="stop-num">6</span>
+                    <input type="text" name="lat_6" placeholder="Latitude" id="lat-6">
+                    <input type="text" name="lng_6" placeholder="Longitude" id="lng-6">
+                </div>
+                <div class="coord-row">
+                    <span class="stop-num">7</span>
+                    <input type="text" name="lat_7" placeholder="Latitude" id="lat-7">
+                    <input type="text" name="lng_7" placeholder="Longitude" id="lng-7">
+                </div>
+                <div class="coord-row">
+                    <span class="stop-num">8</span>
+                    <input type="text" name="lat_8" placeholder="Latitude" id="lat-8">
+                    <input type="text" name="lng_8" placeholder="Longitude" id="lng-8">
+                </div>
+                <div class="coord-row">
+                    <span class="stop-num">9</span>
+                    <input type="text" name="lat_9" placeholder="Latitude" id="lat-9">
+                    <input type="text" name="lng_9" placeholder="Longitude" id="lng-9">
+                </div>
+                <div class="coord-row">
+                    <span class="stop-num">10</span>
+                    <input type="text" name="lat_10" placeholder="Latitude" id="lat-10">
+                    <input type="text" name="lng_10" placeholder="Longitude" id="lng-10">
+                </div>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn btn-primary" id="btn-optimize">
+                    Optimize Route
+                </button>
+                <button type="reset" class="btn btn-ghost" id="btn-reset">
+                    Clear All
+                </button>
+                <span id="loading-indicator" class="htmx-indicator">
+                    <span class="spinner"></span>
+                    <span style="color: var(--text-muted); font-size: 0.85rem;">Calculating…</span>
+                </span>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── Result Area (HTMX swaps content here) ──────────── -->
+    <div id="result-area"></div>
+
+    <footer>
+        Deca-Node &bull; Sprint 1 &bull; Go + HTMX
+    </footer>
+
+</div>
+
+</body>
+</html>
