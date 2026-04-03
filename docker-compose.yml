@@ -10,15 +10,27 @@ services:
       - "8080:8080"
     environment:
       - PORT=8080
+      - JAVA_SERVICE_URL=http://java-routing-engine:8081
+    depends_on:
+      java-routing-engine:
+        condition: service_started
+    networks:
+      - deca-network
     restart: unless-stopped
 
-  # ── Java Routing Engine (placeholder — Sprint 2+) ───────
-  # java-routing-engine:
-  #   build:
-  #     context: ./java-routing-engine
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "8081:8081"
-  #   environment:
-  #     - SERVER_PORT=8081
-  #   restart: unless-stopped
+  # ── Java Routing Engine ─────────────────────────────────
+  java-routing-engine:
+    build:
+      context: ./java-routing-engine
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - SERVER_PORT=8081
+    networks:
+      - deca-network
+    restart: unless-stopped
+
+networks:
+  deca-network:
+    driver: bridge
