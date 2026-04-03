@@ -1,391 +1,525 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="light" lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Deca-Node: Delivery Route Optimization using TSP solver">
-    <title>Deca-Node — Route Optimizer</title>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Deca-Node | TSP Optimization Engine</title>
+<meta name="description" content="Deca-Node: Real-time delivery route optimization using GraphHopper and jsprit TSP solver"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 
-    <!-- HTMX via CDN -->
-    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 
-    <style>
-        /* ── Reset & Base ──────────────────────────────────── */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
 
-        :root {
-            --bg-primary:   #0f1117;
-            --bg-surface:   #1a1d27;
-            --bg-card:      #222636;
-            --border:       #2e3348;
-            --text-primary: #e8eaed;
-            --text-muted:   #9aa0b4;
-            --accent:       #6c63ff;
-            --accent-hover: #7f78ff;
-            --accent-glow:  rgba(108, 99, 255, 0.25);
-            --success:      #34d399;
-            --warning:      #fbbf24;
-            --error:        #f87171;
-            --radius:       12px;
-            --transition:   0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-        body {
-            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            line-height: 1.6;
-        }
-
-        /* ── Layout ────────────────────────────────────────── */
-        .app-container {
-            max-width: 860px;
-            margin: 0 auto;
-            padding: 2rem 1.5rem 4rem;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 2.5rem;
-            padding: 2rem 0;
-        }
-
-        header h1 {
-            font-size: 2.2rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--accent), #a78bfa);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 0.5rem;
-        }
-
-        header p {
-            color: var(--text-muted);
-            font-size: 1rem;
-        }
-
-        /* ── Card ──────────────────────────────────────────── */
-        .card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 1.75rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .card h2 {
-            font-size: 1.15rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .card .subtitle {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            margin-bottom: 1.25rem;
-        }
-
-        /* ── Stop Input Grid ──────────────────────────────── */
-        .stop-grid {
-            display: grid;
-            gap: 0.65rem;
-        }
-
-        .stop-row {
-            display: grid;
-            grid-template-columns: 36px 1fr;
-            gap: 0.6rem;
-            align-items: center;
-        }
-
-        .stop-row .stop-num {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--accent);
-            text-align: center;
-            background: var(--accent-glow);
-            border-radius: 8px;
-            padding: 0.35rem 0;
-        }
-
-        input[type="text"] {
-            width: 100%;
-            padding: 0.6rem 0.85rem;
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-size: 0.9rem;
-            font-family: inherit;
-            transition: border-color var(--transition), box-shadow var(--transition);
-            outline: none;
-        }
-
-        input[type="text"]::placeholder {
-            color: var(--text-muted);
-            opacity: 0.6;
-        }
-
-        input[type="text"]:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--accent-glow);
-        }
-
-        /* ── Buttons ───────────────────────────────────────── */
-        .actions {
-            display: flex;
-            gap: 0.75rem;
-            margin-top: 1.5rem;
-        }
-
-        .btn {
-            padding: 0.7rem 1.6rem;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            transition: all var(--transition);
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--accent), #8b5cf6);
-            color: #fff;
-            box-shadow: 0 4px 15px var(--accent-glow);
-        }
-
-        .btn-primary:hover {
-            background: linear-gradient(135deg, var(--accent-hover), #9b7cf6);
-            box-shadow: 0 6px 20px rgba(108, 99, 255, 0.4);
-            transform: translateY(-1px);
-        }
-
-        .btn-ghost {
-            background: transparent;
-            color: var(--text-muted);
-            border: 1px solid var(--border);
-        }
-
-        .btn-ghost:hover {
-            color: var(--text-primary);
-            border-color: var(--text-muted);
-        }
-
-        /* ── HTMX Loading Indicator ────────────────────────── */
-        .htmx-indicator {
-            display: none;
-        }
-
-        .htmx-request .htmx-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .spinner {
-            width: 18px;
-            height: 18px;
-            border: 2px solid var(--border);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* ── Result Area ───────────────────────────────────── */
-        #result-area {
-            min-height: 60px;
-        }
-
-        .result-card {
-            padding: 1.5rem;
-            border-radius: var(--radius);
-            animation: fadeSlideUp 0.35s ease-out;
-        }
-
-        .result-success {
-            background: rgba(52, 211, 153, 0.08);
-            border: 1px solid rgba(52, 211, 153, 0.25);
-        }
-
-        .result-error {
-            background: rgba(248, 113, 113, 0.08);
-            border: 1px solid rgba(248, 113, 113, 0.25);
-        }
-
-        .result-card h3 { margin-bottom: 0.5rem; font-size: 1.05rem; }
-        .result-card p  { color: var(--text-muted); font-size: 0.9rem; }
-
-        /* ── Metrics Row ───────────────────────────────────── */
-        .metrics-row {
-            display: flex;
-            gap: 1.5rem;
-            margin: 1rem 0;
-            flex-wrap: wrap;
-        }
-
-        .metric {
-            display: flex;
-            flex-direction: column;
-            padding: 0.75rem 1.25rem;
-            background: var(--bg-surface);
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            min-width: 100px;
-        }
-
-        .metric-value {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--accent);
-        }
-
-        .metric-label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* ── Tables ────────────────────────────────────────── */
-        .coord-table {
-            width: 100%;
-            margin-top: 1rem;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-        }
-
-        .coord-table th,
-        .coord-table td {
-            padding: 0.5rem 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .coord-table th {
-            color: var(--text-muted);
-            font-weight: 500;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .hint {
-            margin-top: 1rem;
-            font-style: italic;
-            opacity: 0.7;
-        }
-
-        @keyframes fadeSlideUp {
-            from { opacity: 0; transform: translateY(12px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ── Footer ────────────────────────────────────────── */
-        footer {
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            margin-top: 3rem;
-            opacity: 0.6;
-        }
-    </style>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                colors: {
+                    "on-primary": "#ffffff",
+                    "on-secondary-fixed": "#001a41",
+                    "on-primary-fixed-variant": "#004493",
+                    "outline": "#727785",
+                    "on-background": "#191c1f",
+                    "surface-container": "#eceef2",
+                    "outline-variant": "#c1c6d6",
+                    "tertiary-container": "#c55500",
+                    "on-tertiary-fixed": "#341100",
+                    "surface-variant": "#e1e2e6",
+                    "error-container": "#ffdad6",
+                    "primary-fixed": "#d8e2ff",
+                    "background": "#f8f9fd",
+                    "secondary": "#475e8c",
+                    "on-secondary-fixed-variant": "#2e4673",
+                    "on-primary-fixed": "#001a41",
+                    "surface-tint": "#005bc0",
+                    "tertiary-fixed-dim": "#ffb691",
+                    "on-secondary": "#ffffff",
+                    "on-surface-variant": "#414754",
+                    "surface-container-low": "#f2f4f8",
+                    "on-tertiary-fixed-variant": "#783100",
+                    "surface-container-highest": "#e1e2e6",
+                    "on-primary-container": "#ffffff",
+                    "primary": "#005bbf",
+                    "primary-container": "#1a73e8",
+                    "on-secondary-container": "#3d5481",
+                    "tertiary": "#9e4300",
+                    "on-error-container": "#93000a",
+                    "surface-container-high": "#e6e8ec",
+                    "inverse-surface": "#2d3134",
+                    "inverse-on-surface": "#eff1f5",
+                    "secondary-fixed": "#d8e2ff",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-fixed-dim": "#adc7ff",
+                    "surface-dim": "#d8dade",
+                    "inverse-primary": "#adc7ff",
+                    "secondary-fixed-dim": "#afc7fb",
+                    "on-tertiary-container": "#0e0200",
+                    "secondary-container": "#b2c9fe",
+                    "surface-bright": "#f8f9fd",
+                    "on-error": "#ffffff",
+                    "on-surface": "#191c1f",
+                    "on-tertiary": "#ffffff",
+                    "surface": "#f8f9fd",
+                    "error": "#ba1a1a",
+                    "tertiary-fixed": "#ffdbcb"
+                },
+                fontFamily: {
+                    "headline": ["Plus Jakarta Sans"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+                },
+                borderRadius: {"DEFAULT": "0.25rem", "lg": "0.75rem", "xl": "1.5rem", "full": "9999px"},
+            },
+        },
+    }
+</script>
+<style>
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .htmx-indicator {
+        display: none;
+    }
+    .htmx-request.htmx-indicator {
+        display: flex;
+    }
+    .htmx-request .btn-content {
+        display: none;
+    }
+    /* Leaflet z-index fix */
+    #map { z-index: 0; }
+    .leaflet-pane { z-index: 1; }
+    /* Custom marker pulse animation */
+    @keyframes markerPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(26, 115, 232, 0.5); }
+        50% { box-shadow: 0 0 0 12px rgba(26, 115, 232, 0); }
+    }
+    /* Stop list item styles */
+    .stop-item {
+        animation: slideIn 0.25s ease-out;
+    }
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateX(-8px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+    /* Optimized route polyline glow (via Leaflet pane layering) */
+    .leaflet-overlay-pane svg path {
+        filter: drop-shadow(0 0 4px rgba(26, 115, 232, 0.4));
+    }
+    /* Scrollbar styling for sidebar */
+    .custom-scroll::-webkit-scrollbar { width: 4px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #c1c6d6; border-radius: 999px; }
+</style>
 </head>
-<body>
+<body class="bg-background font-body text-on-surface antialiased overflow-hidden">
 
-<div class="app-container">
+<!-- ── Leaflet Map (full-screen background) ──────────────────── -->
+<div class="fixed inset-0 z-0 w-screen h-screen" id="map"></div>
 
-    <header>
-        <h1>📦 Deca-Node</h1>
-        <p>Delivery Route Optimization — TSP Solver</p>
-    </header>
-
-    <!-- ── Stop Input Form ──────────────────────────────────── -->
-    <div class="card">
-        <h2>📍 Enter Delivery Stops</h2>
-        <p class="subtitle">Enter coordinates (e.g. <code>6.9271, 79.8612</code>) or an address (e.g. <code>Lotus Tower, Colombo</code>)</p>
-
-        <form id="route-form"
-              hx-post="/route"
-              hx-target="#result-area"
-              hx-swap="innerHTML"
-              hx-indicator="#loading-indicator">
-
-            <div class="stop-grid">
-                <div class="stop-row">
-                    <span class="stop-num">1</span>
-                    <input type="text" name="stop_1" placeholder="Lat, Lng  or  Address" id="stop-1">
-                </div>
-                <div class="stop-row">
-                    <span class="stop-num">2</span>
-                    <input type="text" name="stop_2" placeholder="Lat, Lng  or  Address" id="stop-2">
-                </div>
-                <div class="stop-row">
-                    <span class="stop-num">3</span>
-                    <input type="text" name="stop_3" placeholder="Lat, Lng  or  Address" id="stop-3">
-                </div>
-                <div class="stop-row">
-                    <span class="stop-num">4</span>
-                    <input type="text" name="stop_4" placeholder="Lat, Lng  or  Address" id="stop-4">
-                </div>
-                <div class="stop-row">
-                    <span class="stop-num">5</span>
-                    <input type="text" name="stop_5" placeholder="Lat, Lng  or  Address" id="stop-5">
-                </div>
-                <div class="stop-row">
-                    <span class="stop-num">6</span>
-                    <input type="text" name="stop_6" placeholder="Lat, Lng  or  Address" id="stop-6">
-                </div>
-                <div class="stop-row">
-                    <span class="stop-num">7</span>
-                    <input type="text" name="stop_7" placeholder="Lat, Lng  or  Address" id="stop-7">
-                </div>
-                <div class="stop-row">
-                    <span class="stop-num">8</span>
-                    <input type="text" name="stop_8" placeholder="Lat, Lng  or  Address" id="stop-8">
-                </div>
-                <div class="stop-row">
-                    <span class="stop-num">9</span>
-                    <input type="text" name="stop_9" placeholder="Lat, Lng  or  Address" id="stop-9">
-                </div>
-                <div class="stop-row">
-                    <span class="stop-num">10</span>
-                    <input type="text" name="stop_10" placeholder="Lat, Lng  or  Address" id="stop-10">
-                </div>
+<!-- ── Left Sidebar (branding) ──────────────────────────────── -->
+<aside class="fixed left-0 top-0 z-40 hidden md:flex flex-col bg-white dark:bg-slate-900 rounded-3xl m-4 h-[calc(100vh-2rem)] w-72 shadow-2xl shadow-slate-300/40 font-plus-jakarta-sans text-sm">
+    <div class="p-6">
+        <div class="flex items-center gap-3 mb-8">
+            <div class="w-10 h-10 bg-primary-container rounded-xl flex items-center justify-center text-white">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">route</span>
             </div>
-
-            <div class="actions">
-                <button type="submit" class="btn btn-primary" id="btn-optimize">
-                    Optimize Route
-                </button>
-                <button type="reset" class="btn btn-ghost" id="btn-reset">
-                    Clear All
-                </button>
-                <span id="loading-indicator" class="htmx-indicator">
-                    <span class="spinner"></span>
-                    <span style="color: var(--text-muted); font-size: 0.85rem;">Optimizing route…</span>
-                </span>
+            <div>
+                <h1 class="text-lg font-bold text-slate-900 dark:text-slate-50 leading-tight">Deca-Node TSP</h1>
+                <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Optimization Engine</p>
             </div>
-        </form>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="space-y-1">
+            <a href="/" class="flex items-center gap-3 px-4 py-2.5 bg-primary-fixed/50 text-primary rounded-xl font-semibold text-sm">
+                <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">conversion_path</span>
+                Route Builder
+            </a>
+        </nav>
     </div>
 
-    <!-- ── Result Area (HTMX swaps content here) ──────────── -->
-    <div id="result-area"></div>
+    <!-- Sidebar footer -->
+    <div class="mt-auto p-6 border-t border-surface-variant">
+        <a href="#" class="flex items-center gap-3 px-4 py-2.5 text-on-surface-variant hover:bg-surface-container-low rounded-xl transition-colors text-sm">
+            <span class="material-symbols-outlined text-lg">help</span>
+            Support
+        </a>
+    </div>
+</aside>
 
-    <footer>
-        Deca-Node &bull; Sprint 3 &bull; Go + HTMX + GraphHopper + jsprit
-    </footer>
+<!-- ── Main Panel (form + results) ──────────────────────────── -->
+<main class="fixed left-0 md:left-80 top-0 z-10 m-4 md:m-4 w-[calc(100%-2rem)] md:w-96 max-h-[calc(100vh-2rem)] overflow-y-auto custom-scroll">
+    <div class="bg-surface-container-lowest backdrop-blur-md bg-opacity-95 shadow-2xl rounded-xl border border-white/20 p-6 flex flex-col gap-6">
 
-</div>
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+            <h2 class="font-headline text-xl font-extrabold tracking-tight text-on-surface">Deca-Node TSP Solver</h2>
+        </div>
 
+        <!-- Search bar (for address geocoding) -->
+        <div class="relative group">
+            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/60 group-focus-within:text-primary transition-colors">search</span>
+            <input id="search-input" class="w-full h-12 pl-12 pr-4 bg-surface-container-lowest border-none rounded-xl shadow-sm ring-1 ring-outline-variant/30 focus:ring-2 focus:ring-primary focus:shadow-md transition-all placeholder:text-on-surface-variant/50 text-sm" placeholder="Search for a location..." type="text"/>
+        </div>
+
+        <!-- Form with HTMX -->
+        <form id="route-form" class="space-y-6" hx-post="/route" hx-target="#results-container" hx-indicator="#loading-spinner">
+            <div class="space-y-3">
+                <label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">location_on</span>
+                    Delivery Sequence
+                </label>
+                <ul class="flex flex-col gap-2 p-4 bg-surface-container-low rounded-xl min-h-[120px] transition-all border-2 border-dashed border-outline-variant/30" id="stop-list">
+                    <li class="flex flex-col items-center justify-center h-full text-center py-6 text-on-surface-variant/60" id="empty-state">
+                        <span class="material-symbols-outlined text-3xl mb-2">add_location_alt</span>
+                        <p class="text-sm px-4">Click on the map or search to drop up to 10 delivery stops.</p>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="space-y-3">
+                <button class="group relative w-full h-12 bg-gradient-to-br from-primary to-primary-container text-white font-semibold rounded-lg overflow-hidden flex items-center justify-center transition-all active:scale-[0.98] shadow-lg shadow-primary/20" type="submit" id="btn-optimize">
+                    <div class="btn-content flex items-center gap-2">
+                        <span class="material-symbols-outlined text-xl">rocket_launch</span>
+                        <span>Optimize Route</span>
+                    </div>
+                    <div class="htmx-indicator flex items-center gap-2" id="loading-spinner">
+                        <svg class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" fill="currentColor"></path>
+                        </svg>
+                        <span>Calculating...</span>
+                    </div>
+                </button>
+
+                <button class="w-full h-11 border-2 border-outline-variant/50 text-on-surface-variant font-medium rounded-lg hover:bg-surface-container-low transition-colors flex items-center justify-center gap-2" type="button" id="clear-pins-btn">
+                    <span class="material-symbols-outlined text-lg">delete_sweep</span>
+                    Clear Pins
+                </button>
+            </div>
+        </form>
+
+        <!-- Results container (HTMX swaps content here) -->
+        <div class="mt-2 border-t border-surface-variant pt-6 hidden transition-all" id="results-container">
+        </div>
+    </div>
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     Vanilla JS — Leaflet Map Controller
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+    'use strict';
+
+    // ── Constants ──────────────────────────────────────────────
+    const MAX_STOPS = 10;
+    const COLOMBO = [6.9271, 79.8612];
+    const DEFAULT_ZOOM = 8;
+    const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+
+    // ── State ──────────────────────────────────────────────────
+    let markers = [];
+    let stopCount = 0;
+    let routePolyline = null;
+    let optimizedMarkers = [];
+
+    // ── Initialize Map ─────────────────────────────────────────
+    const map = L.map('map', {
+        center: COLOMBO,
+        zoom: DEFAULT_ZOOM,
+        zoomControl: false
+    });
+
+    L.tileLayer(TILE_URL, {
+        attribution: TILE_ATTR,
+        maxZoom: 19
+    }).addTo(map);
+
+    // Position zoom control on right side
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // ── DOM References ─────────────────────────────────────────
+    const stopList     = document.getElementById('stop-list');
+    const emptyState   = document.getElementById('empty-state');
+    const clearBtn     = document.getElementById('clear-pins-btn');
+    const resultsDiv   = document.getElementById('results-container');
+    const searchInput  = document.getElementById('search-input');
+
+    // ── Custom marker icon ─────────────────────────────────────
+    function createMarkerIcon(number) {
+        return L.divIcon({
+            className: 'custom-marker',
+            html: `<div style="
+                width: 32px; height: 32px;
+                background: linear-gradient(135deg, #005bbf, #1a73e8);
+                border: 3px solid #fff;
+                border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                color: #fff; font-weight: 700; font-size: 13px;
+                font-family: 'Inter', sans-serif;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                animation: markerPulse 2s ease-in-out 1;
+            ">${number}</div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+    }
+
+    // Optimized route marker (green)
+    function createOptimizedIcon(number) {
+        return L.divIcon({
+            className: 'custom-marker',
+            html: `<div style="
+                width: 32px; height: 32px;
+                background: linear-gradient(135deg, #0f9d58, #34a853);
+                border: 3px solid #fff;
+                border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                color: #fff; font-weight: 700; font-size: 13px;
+                font-family: 'Inter', sans-serif;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            ">${number}</div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+    }
+
+    // ── Add Stop ───────────────────────────────────────────────
+    function addStop(lat, lng, label) {
+        if (stopCount >= MAX_STOPS) return;
+
+        stopCount++;
+        const coordStr = lat.toFixed(6) + ', ' + lng.toFixed(6);
+        const displayLabel = label || coordStr;
+
+        // Hide empty state
+        emptyState.style.display = 'none';
+
+        // Drop marker on map
+        const marker = L.marker([lat, lng], {
+            icon: createMarkerIcon(stopCount)
+        }).addTo(map);
+        marker.bindPopup(`<b>Stop ${stopCount}</b><br>${displayLabel}`);
+        markers.push(marker);
+
+        // Create list item + hidden input
+        const li = document.createElement('li');
+        li.className = 'stop-item flex items-center gap-3 py-2 px-3 bg-white rounded-lg shadow-sm border border-outline-variant/20';
+        li.innerHTML = `
+            <div class="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-white text-xs font-bold shrink-0">${stopCount}</div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-on-surface truncate">${displayLabel}</p>
+                <p class="text-[11px] text-on-surface-variant">${coordStr}</p>
+            </div>
+            <button type="button" class="remove-stop shrink-0 w-7 h-7 flex items-center justify-center text-on-surface-variant/50 hover:text-error hover:bg-error-container rounded-full transition-colors" data-index="${stopCount - 1}">
+                <span class="material-symbols-outlined text-base">close</span>
+            </button>
+            <input type="hidden" name="stop" value="${coordStr}"/>
+        `;
+        stopList.appendChild(li);
+
+        // Remove stop handler
+        li.querySelector('.remove-stop').addEventListener('click', function() {
+            removeStop(parseInt(this.dataset.index));
+        });
+    }
+
+    // ── Remove Stop ────────────────────────────────────────────
+    function removeStop(index) {
+        // Remove marker from map
+        if (markers[index]) {
+            map.removeLayer(markers[index]);
+        }
+        markers.splice(index, 1);
+        stopCount--;
+
+        // Rebuild the list
+        rebuildStopList();
+        clearRoute();
+    }
+
+    // ── Rebuild Stop List (after removal) ──────────────────────
+    function rebuildStopList() {
+        // Remove all stop items (keep empty state)
+        const items = stopList.querySelectorAll('.stop-item');
+        items.forEach(item => item.remove());
+
+        if (markers.length === 0) {
+            emptyState.style.display = 'flex';
+            return;
+        }
+
+        // Re-add all stops with updated numbering
+        markers.forEach((marker, i) => {
+            const latlng = marker.getLatLng();
+            marker.setIcon(createMarkerIcon(i + 1));
+            marker.setPopupContent(`<b>Stop ${i + 1}</b><br>${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`);
+
+            const coordStr = latlng.lat.toFixed(6) + ', ' + latlng.lng.toFixed(6);
+            const li = document.createElement('li');
+            li.className = 'stop-item flex items-center gap-3 py-2 px-3 bg-white rounded-lg shadow-sm border border-outline-variant/20';
+            li.innerHTML = `
+                <div class="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-white text-xs font-bold shrink-0">${i + 1}</div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-on-surface truncate">${coordStr}</p>
+                    <p class="text-[11px] text-on-surface-variant">${coordStr}</p>
+                </div>
+                <button type="button" class="remove-stop shrink-0 w-7 h-7 flex items-center justify-center text-on-surface-variant/50 hover:text-error hover:bg-error-container rounded-full transition-colors" data-index="${i}">
+                    <span class="material-symbols-outlined text-base">close</span>
+                </button>
+                <input type="hidden" name="stop" value="${coordStr}"/>
+            `;
+            stopList.appendChild(li);
+
+            li.querySelector('.remove-stop').addEventListener('click', function() {
+                removeStop(parseInt(this.dataset.index));
+            });
+        });
+    }
+
+    // ── Map Click Listener ─────────────────────────────────────
+    map.on('click', function(e) {
+        if (stopCount >= MAX_STOPS) return;
+        addStop(e.latlng.lat, e.latlng.lng);
+    });
+
+    // ── Clear Button ───────────────────────────────────────────
+    clearBtn.addEventListener('click', function() {
+        // Remove all markers
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+        stopCount = 0;
+
+        // Clear route
+        clearRoute();
+
+        // Reset stop list
+        const items = stopList.querySelectorAll('.stop-item');
+        items.forEach(item => item.remove());
+        emptyState.style.display = 'flex';
+
+        // Hide results
+        resultsDiv.classList.add('hidden');
+        resultsDiv.innerHTML = '';
+    });
+
+    // ── Clear Route Drawing ────────────────────────────────────
+    function clearRoute() {
+        if (routePolyline) {
+            map.removeLayer(routePolyline);
+            routePolyline = null;
+        }
+        optimizedMarkers.forEach(m => map.removeLayer(m));
+        optimizedMarkers = [];
+    }
+
+    // ── Draw Optimized Route (called by backend response) ─────
+    window.drawOptimizedRoute = function(routeData) {
+        clearRoute();
+
+        if (!routeData || routeData.length === 0) return;
+
+        // Remove original blue markers
+        markers.forEach(m => map.removeLayer(m));
+
+        // Draw green optimized markers
+        const latlngs = [];
+        routeData.forEach(function(point, i) {
+            const ll = [point.lat, point.lng];
+            latlngs.push(ll);
+
+            const marker = L.marker(ll, {
+                icon: createOptimizedIcon(i + 1)
+            }).addTo(map);
+
+            const label = point.label || ('Stop ' + (i + 1));
+            marker.bindPopup(`<b>#${i + 1} — ${label}</b><br>${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}`);
+            optimizedMarkers.push(marker);
+        });
+
+        // Draw polyline
+        routePolyline = L.polyline(latlngs, {
+            color: '#1a73e8',
+            weight: 4,
+            opacity: 0.85,
+            smoothFactor: 1,
+            dashArray: null
+        }).addTo(map);
+
+        // Add animated direction arrows via a dashed overlay
+        L.polyline(latlngs, {
+            color: '#ffffff',
+            weight: 2,
+            opacity: 0.6,
+            dashArray: '10, 20',
+            smoothFactor: 1
+        }).addTo(map);
+
+        // Fit map bounds to the route
+        const bounds = L.latLngBounds(latlngs);
+        map.fitBounds(bounds, { padding: [60, 60] });
+
+        // Show results container
+        resultsDiv.classList.remove('hidden');
+    };
+
+    // ── Search Input (geocode via Photon) ──────────────────────
+    let searchTimeout = null;
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const query = searchInput.value.trim();
+            if (!query) return;
+            if (stopCount >= MAX_STOPS) return;
+
+            geocodeAndAdd(query);
+        }
+    });
+
+    function geocodeAndAdd(query) {
+        const url = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(query) + '&limit=1';
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (data.features && data.features.length > 0) {
+                    const coords = data.features[0].geometry.coordinates;
+                    const lng = coords[0];
+                    const lat = coords[1];
+                    const name = data.features[0].properties.name || query;
+                    addStop(lat, lng, name);
+                    searchInput.value = '';
+                    map.setView([lat, lng], 12);
+                } else {
+                    alert('Location not found: ' + query);
+                }
+            })
+            .catch(err => {
+                console.error('Geocoding error:', err);
+                alert('Geocoding failed. Check your connection.');
+            });
+    }
+
+    // ── HTMX: Show results container after swap ────────────────
+    document.body.addEventListener('htmx:afterSwap', function(e) {
+        if (e.detail.target.id === 'results-container') {
+            resultsDiv.classList.remove('hidden');
+        }
+    });
+
+})();
+</script>
 </body>
 </html>

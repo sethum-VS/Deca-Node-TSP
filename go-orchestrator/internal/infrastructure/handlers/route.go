@@ -36,12 +36,12 @@ type Coordinate struct {
 
 // OptimizeResponse is the JSON response from the Java service.
 type OptimizeResponse struct {
-	Status          string       `json:"status"`
-	Message         string       `json:"message"`
-	OptimizedRoute  []Coordinate `json:"optimizedRoute"`
-	TotalStops      int          `json:"totalStops"`
-	TotalDistanceKm float64      `json:"totalDistanceKm"`
-	EstimatedTimeMin float64     `json:"estimatedTimeMin"`
+	Status           string       `json:"status"`
+	Message          string       `json:"message"`
+	OptimizedRoute   []Coordinate `json:"optimizedRoute"`
+	TotalStops       int          `json:"totalStops"`
+	TotalDistanceKm  float64      `json:"totalDistanceKm"`
+	EstimatedTimeMin float64      `json:"estimatedTimeMin"`
 }
 
 // ErrorResponse for Java error responses.
@@ -65,8 +65,9 @@ func getJavaServiceURL() string {
 	return url
 }
 
-// RouteHandler receives stop inputs via HTMX POST, performs smart parsing,
-// calls the Java routing engine, and returns an HTML fragment.
+// RouteHandler receives stop inputs via HTMX POST (hidden inputs named "stop"),
+// performs smart parsing, calls the Java routing engine, and returns an HTML
+// fragment + a <script> tag to draw the optimized polyline on the Leaflet map.
 func RouteHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -78,27 +79,30 @@ func RouteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ── Smart parsing: read stop_1 .. stop_10 fields ────────
+	// ── Read all "stop" values (multiple hidden inputs with same name) ──
+	rawStops := r.Form["stop"]
 	var stops []StopInput
 	var originalInputs []string
 
-	for i := 1; i <= 10; i++ {
-		raw := strings.TrimSpace(r.FormValue(fmt.Sprintf("stop_%d", i)))
+	for _, raw := range rawStops {
+		raw = strings.TrimSpace(raw)
 		if raw == "" {
 			continue
 		}
-
 		originalInputs = append(originalInputs, raw)
-		stop := parseStopInput(raw)
-		stops = append(stops, stop)
+		stops = append(stops, parseStopInput(raw))
 	}
 
 	if len(stops) < 2 {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprint(w, `<div class="result-card result-error">
-			<p>⚠️ Please provide at least <strong>2 valid stops</strong> to calculate a route.</p>
-			<p class="hint">Enter coordinates (e.g. 6.9271, 79.8612) or an address (e.g. Lotus Tower, Colombo).</p>
-		</div>`)
+		fmt.Fprint(w, `
+			<div class="flex items-start gap-3 p-4 bg-error-container/30 border border-error/20 rounded-lg">
+				<span class="material-symbols-outlined text-error text-xl mt-0.5">warning</span>
+				<div>
+					<p class="text-sm font-semibold text-error">Not enough stops</p>
+					<p class="text-xs text-on-surface-variant mt-1">Drop at least <strong>2 pins</strong> on the map to calculate a route.</p>
+				</div>
+			</div>`)
 		return
 	}
 
@@ -109,26 +113,34 @@ func RouteHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Java service error: %v", err)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprintf(w, `<div class="result-card result-error">
-			<h3>❌ Routing Engine Error</h3>
-			<p>%s</p>
-			<p class="hint">Make sure both services are running via <code>docker-compose up</code>.</p>
-		</div>`, err.Error())
+		fmt.Fprintf(w, `
+			<div class="flex items-start gap-3 p-4 bg-error-container/30 border border-error/20 rounded-lg">
+				<span class="material-symbols-outlined text-error text-xl mt-0.5">error</span>
+				<div>
+					<p class="text-sm font-semibold text-error">Routing Engine Error</p>
+					<p class="text-xs text-on-surface-variant mt-1">%s</p>
+					<p class="text-xs text-on-surface-variant mt-1">Make sure both services are running via <code>docker-compose up</code>.</p>
+				</div>
+			</div>`, err.Error())
 		return
 	}
 	if errResp != nil {
 		log.Printf("Java service returned error: %s", errResp.Message)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprintf(w, `<div class="result-card result-error">
-			<h3>⚠️ Routing Error</h3>
-			<p>%s</p>
-		</div>`, errResp.Message)
+		fmt.Fprintf(w, `
+			<div class="flex items-start gap-3 p-4 bg-error-container/30 border border-error/20 rounded-lg">
+				<span class="material-symbols-outlined text-error text-xl mt-0.5">warning</span>
+				<div>
+					<p class="text-sm font-semibold text-error">Routing Error</p>
+					<p class="text-xs text-on-surface-variant mt-1">%s</p>
+				</div>
+			</div>`, errResp.Message)
 		return
 	}
 
-	// ── Build HTML response fragment ───────────────────────
+	// ── Build HTML response fragment + route drawing script ──
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, buildResultHTML(optimized, originalInputs))
+	fmt.Fprint(w, buildResultHTML(optimized))
 }
 
 // parseStopInput applies smart parsing:
@@ -190,42 +202,69 @@ func callJavaService(stops []StopInput) (*OptimizeResponse, *ErrorResponse, erro
 }
 
 // buildResultHTML constructs the HTMX HTML fragment for the result area.
-func buildResultHTML(resp *OptimizeResponse, originalInputs []string) string {
+// Includes the metrics cards, the optimized stop list, and a <script>
+// tag that calls drawOptimizedRoute() to render the polyline on the map.
+func buildResultHTML(resp *OptimizeResponse) string {
 	var sb strings.Builder
 
-	sb.WriteString(`<div class="result-card result-success">`)
-	sb.WriteString(fmt.Sprintf(`<h3>✅ %s</h3>`, resp.Message))
+	// ── Metrics cards ─────────────────────────────────────────
+	sb.WriteString(`<div class="space-y-4">`)
 
-	// ── Summary metrics ───────────────────────────────────
-	sb.WriteString(`<div class="metrics-row">`)
-	sb.WriteString(fmt.Sprintf(`<div class="metric"><span class="metric-value">%d</span><span class="metric-label">Stops</span></div>`, resp.TotalStops))
-	sb.WriteString(fmt.Sprintf(`<div class="metric"><span class="metric-value">%.1f km</span><span class="metric-label">Total Distance</span></div>`, resp.TotalDistanceKm))
-	sb.WriteString(fmt.Sprintf(`<div class="metric"><span class="metric-value">~%.0f min</span><span class="metric-label">Est. Travel Time</span></div>`, resp.EstimatedTimeMin))
+	// Success header
+	sb.WriteString(`<div class="flex items-center gap-2 text-sm font-semibold text-primary">`)
+	sb.WriteString(`<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">check_circle</span>`)
+	sb.WriteString(`<span>Route Optimized</span>`)
 	sb.WriteString(`</div>`)
 
-	// ── Original order ────────────────────────────────────
-	sb.WriteString(`<h4 style="margin-top:1.5rem; color: var(--text-muted);">📋 Original Input</h4>`)
-	sb.WriteString(`<table class="coord-table">`)
-	sb.WriteString(`<thead><tr><th>Stop</th><th>Input</th></tr></thead><tbody>`)
-	for i, input := range originalInputs {
-		sb.WriteString(fmt.Sprintf(`<tr><td>%d</td><td>%s</td></tr>`, i+1, input))
-	}
-	sb.WriteString(`</tbody></table>`)
+	// Metric cards
+	sb.WriteString(`<div class="grid grid-cols-3 gap-3">`)
 
-	// ── Optimized route ───────────────────────────────────
-	sb.WriteString(`<h4 style="margin-top:1.5rem; color: var(--accent);">🚀 Optimized Route</h4>`)
-	sb.WriteString(`<table class="coord-table">`)
-	sb.WriteString(`<thead><tr><th>Order</th><th>Label</th><th>Latitude</th><th>Longitude</th></tr></thead><tbody>`)
+	sb.WriteString(fmt.Sprintf(`
+		<div class="flex flex-col items-center p-3 bg-primary-fixed/30 rounded-xl">
+			<span class="text-lg font-bold text-primary">%d</span>
+			<span class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Stops</span>
+		</div>`, resp.TotalStops))
+
+	sb.WriteString(fmt.Sprintf(`
+		<div class="flex flex-col items-center p-3 bg-primary-fixed/30 rounded-xl">
+			<span class="text-lg font-bold text-primary">%.1f</span>
+			<span class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">KM</span>
+		</div>`, resp.TotalDistanceKm))
+
+	sb.WriteString(fmt.Sprintf(`
+		<div class="flex flex-col items-center p-3 bg-primary-fixed/30 rounded-xl">
+			<span class="text-lg font-bold text-primary">~%.0f</span>
+			<span class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">MIN</span>
+		</div>`, resp.EstimatedTimeMin))
+
+	sb.WriteString(`</div>`)
+
+	// ── Optimized stop list ───────────────────────────────────
+	sb.WriteString(`<div class="space-y-2">`)
+	sb.WriteString(`<p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant flex items-center gap-1.5">`)
+	sb.WriteString(`<span class="material-symbols-outlined text-sm">route</span> Optimized Sequence</p>`)
+
 	for i, c := range resp.OptimizedRoute {
 		label := c.Label
 		if label == "" {
 			label = fmt.Sprintf("Stop %d", i+1)
 		}
-		sb.WriteString(fmt.Sprintf(`<tr><td>%d</td><td>%s</td><td>%.6f</td><td>%.6f</td></tr>`,
-			i+1, label, c.Lat, c.Lng))
+		sb.WriteString(fmt.Sprintf(`
+			<div class="flex items-center gap-3 py-2 px-3 bg-surface-container-low rounded-lg border border-outline-variant/20">
+				<div class="flex items-center justify-center w-6 h-6 rounded-full text-white text-[11px] font-bold shrink-0" style="background: linear-gradient(135deg, #0f9d58, #34a853);">%d</div>
+				<div class="flex-1 min-w-0">
+					<p class="text-sm font-medium text-on-surface truncate">%s</p>
+					<p class="text-[11px] text-on-surface-variant">%.6f, %.6f</p>
+				</div>
+			</div>`, i+1, label, c.Lat, c.Lng))
 	}
-	sb.WriteString(`</tbody></table>`)
 
 	sb.WriteString(`</div>`)
+	sb.WriteString(`</div>`)
+
+	// ── Script tag to draw the polyline on the Leaflet map ───
+	routeJSON, _ := json.Marshal(resp.OptimizedRoute)
+	sb.WriteString(fmt.Sprintf(`<script>drawOptimizedRoute(%s);</script>`, string(routeJSON)))
+
 	return sb.String()
 }
