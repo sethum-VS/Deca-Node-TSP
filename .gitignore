@@ -22,3 +22,10 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
+
+# OSM data & GraphHopper cache (downloaded via init-data.sh)
+java-routing-engine/data/
+*.osm.pbf
+
+# Java build artifacts
+java-routing-engine/target/

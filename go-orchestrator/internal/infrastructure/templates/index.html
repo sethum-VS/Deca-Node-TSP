@@ -78,26 +78,32 @@
         .card h2 {
             font-size: 1.15rem;
             font-weight: 600;
-            margin-bottom: 1.25rem;
+            margin-bottom: 0.5rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
 
-        /* ── Coordinate Grid ───────────────────────────────── */
-        .coord-grid {
+        .card .subtitle {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 1.25rem;
+        }
+
+        /* ── Stop Input Grid ──────────────────────────────── */
+        .stop-grid {
             display: grid;
             gap: 0.65rem;
         }
 
-        .coord-row {
+        .stop-row {
             display: grid;
-            grid-template-columns: 36px 1fr 1fr;
+            grid-template-columns: 36px 1fr;
             gap: 0.6rem;
             align-items: center;
         }
 
-        .coord-row .stop-num {
+        .stop-row .stop-num {
             font-size: 0.8rem;
             font-weight: 600;
             color: var(--accent);
@@ -219,6 +225,38 @@
         .result-card h3 { margin-bottom: 0.5rem; font-size: 1.05rem; }
         .result-card p  { color: var(--text-muted); font-size: 0.9rem; }
 
+        /* ── Metrics Row ───────────────────────────────────── */
+        .metrics-row {
+            display: flex;
+            gap: 1.5rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+
+        .metric {
+            display: flex;
+            flex-direction: column;
+            padding: 0.75rem 1.25rem;
+            background: var(--bg-surface);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            min-width: 100px;
+        }
+
+        .metric-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── Tables ────────────────────────────────────────── */
         .coord-table {
             width: 100%;
             margin-top: 1rem;
@@ -271,9 +309,10 @@
         <p>Delivery Route Optimization — TSP Solver</p>
     </header>
 
-    <!-- ── Coordinate Input Form ──────────────────────────── -->
+    <!-- ── Stop Input Form ──────────────────────────────────── -->
     <div class="card">
         <h2>📍 Enter Delivery Stops</h2>
+        <p class="subtitle">Enter coordinates (e.g. <code>6.9271, 79.8612</code>) or an address (e.g. <code>Lotus Tower, Colombo</code>)</p>
 
         <form id="route-form"
               hx-post="/route"
@@ -281,56 +320,46 @@
               hx-swap="innerHTML"
               hx-indicator="#loading-indicator">
 
-            <div class="coord-grid">
-                <div class="coord-row">
+            <div class="stop-grid">
+                <div class="stop-row">
                     <span class="stop-num">1</span>
-                    <input type="text" name="lat_1" placeholder="Latitude  (e.g. 6.9271)" id="lat-1">
-                    <input type="text" name="lng_1" placeholder="Longitude (e.g. 79.8612)" id="lng-1">
+                    <input type="text" name="stop_1" placeholder="Lat, Lng  or  Address" id="stop-1">
                 </div>
-                <div class="coord-row">
+                <div class="stop-row">
                     <span class="stop-num">2</span>
-                    <input type="text" name="lat_2" placeholder="Latitude" id="lat-2">
-                    <input type="text" name="lng_2" placeholder="Longitude" id="lng-2">
+                    <input type="text" name="stop_2" placeholder="Lat, Lng  or  Address" id="stop-2">
                 </div>
-                <div class="coord-row">
+                <div class="stop-row">
                     <span class="stop-num">3</span>
-                    <input type="text" name="lat_3" placeholder="Latitude" id="lat-3">
-                    <input type="text" name="lng_3" placeholder="Longitude" id="lng-3">
+                    <input type="text" name="stop_3" placeholder="Lat, Lng  or  Address" id="stop-3">
                 </div>
-                <div class="coord-row">
+                <div class="stop-row">
                     <span class="stop-num">4</span>
-                    <input type="text" name="lat_4" placeholder="Latitude" id="lat-4">
-                    <input type="text" name="lng_4" placeholder="Longitude" id="lng-4">
+                    <input type="text" name="stop_4" placeholder="Lat, Lng  or  Address" id="stop-4">
                 </div>
-                <div class="coord-row">
+                <div class="stop-row">
                     <span class="stop-num">5</span>
-                    <input type="text" name="lat_5" placeholder="Latitude" id="lat-5">
-                    <input type="text" name="lng_5" placeholder="Longitude" id="lng-5">
+                    <input type="text" name="stop_5" placeholder="Lat, Lng  or  Address" id="stop-5">
                 </div>
-                <div class="coord-row">
+                <div class="stop-row">
                     <span class="stop-num">6</span>
-                    <input type="text" name="lat_6" placeholder="Latitude" id="lat-6">
-                    <input type="text" name="lng_6" placeholder="Longitude" id="lng-6">
+                    <input type="text" name="stop_6" placeholder="Lat, Lng  or  Address" id="stop-6">
                 </div>
-                <div class="coord-row">
+                <div class="stop-row">
                     <span class="stop-num">7</span>
-                    <input type="text" name="lat_7" placeholder="Latitude" id="lat-7">
-                    <input type="text" name="lng_7" placeholder="Longitude" id="lng-7">
+                    <input type="text" name="stop_7" placeholder="Lat, Lng  or  Address" id="stop-7">
                 </div>
-                <div class="coord-row">
+                <div class="stop-row">
                     <span class="stop-num">8</span>
-                    <input type="text" name="lat_8" placeholder="Latitude" id="lat-8">
-                    <input type="text" name="lng_8" placeholder="Longitude" id="lng-8">
+                    <input type="text" name="stop_8" placeholder="Lat, Lng  or  Address" id="stop-8">
                 </div>
-                <div class="coord-row">
+                <div class="stop-row">
                     <span class="stop-num">9</span>
-                    <input type="text" name="lat_9" placeholder="Latitude" id="lat-9">
-                    <input type="text" name="lng_9" placeholder="Longitude" id="lng-9">
+                    <input type="text" name="stop_9" placeholder="Lat, Lng  or  Address" id="stop-9">
                 </div>
-                <div class="coord-row">
+                <div class="stop-row">
                     <span class="stop-num">10</span>
-                    <input type="text" name="lat_10" placeholder="Latitude" id="lat-10">
-                    <input type="text" name="lng_10" placeholder="Longitude" id="lng-10">
+                    <input type="text" name="stop_10" placeholder="Lat, Lng  or  Address" id="stop-10">
                 </div>
             </div>
 
@@ -343,7 +372,7 @@
                 </button>
                 <span id="loading-indicator" class="htmx-indicator">
                     <span class="spinner"></span>
-                    <span style="color: var(--text-muted); font-size: 0.85rem;">Calculating…</span>
+                    <span style="color: var(--text-muted); font-size: 0.85rem;">Optimizing route…</span>
                 </span>
             </div>
         </form>
@@ -353,7 +382,7 @@
     <div id="result-area"></div>
 
     <footer>
-        Deca-Node &bull; Sprint 1 &bull; Go + HTMX
+        Deca-Node &bull; Sprint 3 &bull; Go + HTMX + GraphHopper + jsprit
     </footer>
 
 </div>

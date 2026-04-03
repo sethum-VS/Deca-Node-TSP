@@ -1,20 +1,17 @@
 package com.decanode.routing.infrastructure;
 
-import com.decanode.routing.domain.Coordinate;
+import com.decanode.routing.application.RoutingService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.Map;
 
 /**
- * REST Controller for route optimization.
- * Sprint 2: Returns dummy response (reversed coordinates).
- * Future sprints will integrate GraphHopper + jsprit.
+ * REST Controller for the /api/optimize endpoint.
+ * Delegates to RoutingService for the full optimization pipeline.
  */
 @RestController
 @RequestMapping("/api")
@@ -22,23 +19,32 @@ public class OptimizeController {
 
     private static final Logger log = LoggerFactory.getLogger(OptimizeController.class);
 
+    private final RoutingService routingService;
+
+    public OptimizeController(RoutingService routingService) {
+        this.routingService = routingService;
+    }
+
     @PostMapping("/optimize")
-    public ResponseEntity<OptimizeResponse> optimize(@Valid @RequestBody OptimizeRequest request) {
-        List<Coordinate> coordinates = request.getCoordinates();
-        log.info("Received {} coordinates for optimization", coordinates.size());
+    public ResponseEntity<?> optimize(@Valid @RequestBody OptimizeRequest request) {
+        log.info("POST /api/optimize — {} stops received", request.getStops().size());
 
-        // ── Dummy optimization: reverse the order ──────────────────
-        // In future sprints, this will use GraphHopper distance matrix
-        // fed into jsprit TSP solver for actual optimization.
-        List<Coordinate> reversed = new ArrayList<>(coordinates);
-        Collections.reverse(reversed);
+        try {
+            OptimizeResponse response = routingService.optimize(request.getStops());
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            log.warn("Validation/routing error: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(
+                    Map.of("status", "error", "message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error during optimization", e);
+            return ResponseEntity.internalServerError().body(
+                    Map.of("status", "error", "message", "Internal server error: " + e.getMessage()));
+        }
+    }
 
-        OptimizeResponse response = new OptimizeResponse(
-                "success",
-                "Route optimized (dummy: reversed order). TSP solver pending.",
-                reversed
-        );
-
-        return ResponseEntity.ok(response);
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> health() {
+        return ResponseEntity.ok(Map.of("status", "up", "service", "routing-engine"));
     }
 }

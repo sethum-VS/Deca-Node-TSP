@@ -20,22 +20,37 @@
 
     <properties>
         <java.version>21</java.version>
+        <graphhopper.version>11.0</graphhopper.version>
+        <jsprit.version>1.7.2</jsprit.version>
     </properties>
 
     <dependencies>
-        <!-- Web (REST controllers) -->
+        <!-- ── Spring Boot ──────────────────────────────────── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- Validation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <!-- Test -->
+        <!-- ── GraphHopper (routing engine, distance matrix) ── -->
+        <dependency>
+            <groupId>com.graphhopper</groupId>
+            <artifactId>graphhopper-core</artifactId>
+            <version>${graphhopper.version}</version>
+        </dependency>
+
+        <!-- ── jsprit (TSP / VRP solver) ─────────────────────── -->
+        <dependency>
+            <groupId>com.graphhopper</groupId>
+            <artifactId>jsprit-core</artifactId>
+            <version>${jsprit.version}</version>
+        </dependency>
+
+        <!-- ── Test ──────────────────────────────────────────── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
