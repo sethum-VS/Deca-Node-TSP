@@ -54,8 +54,7 @@ public class GraphHopperConfig {
         customModel.addToPriority(If("road_class == TRUNK", MULTIPLY, "1.1"));
 
         hopper.setProfiles(new Profile("expressway_car")
-                .setCustomModel(customModel)
-                .setVehicle("car"));
+                .setCustomModel(customModel));
 
         // Enable Contraction Hierarchies for fast routing queries
         hopper.getCHPreparationHandler().setCHProfiles(new CHProfile("expressway_car"));

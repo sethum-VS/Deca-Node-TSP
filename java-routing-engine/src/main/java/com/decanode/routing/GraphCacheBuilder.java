@@ -49,8 +49,7 @@ public class GraphCacheBuilder {
         customModel.addToPriority(If("road_class == TRUNK", MULTIPLY, "1.1"));
 
         hopper.setProfiles(new Profile("expressway_car")
-                .setCustomModel(customModel)
-                .setVehicle("car"));
+                .setCustomModel(customModel));
 
         hopper.getCHPreparationHandler().setCHProfiles(new CHProfile("expressway_car"));
 
