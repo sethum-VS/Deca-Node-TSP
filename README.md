@@ -41,6 +41,12 @@ The OSM/GraphHopper stack replaces commercial mapping APIs to:
 
 ## Quick Start
 
+### Live Demo
+
+![Optimized Delivery Route showing the calculated optimal path between Homagama, Galle Fort, Kiribathgoda, and Colombo Lotus Tower](docs/assets/demo.png)
+
+*The interactive visualization above demonstrates Deca-Node's 5-step routing pipeline. In this example, "Homagama", "Galle Fort", "Kiribathgoda", and "Colombo Lotus Tower" were sequentially entered into the search bar (resolved by Photon Geocoding). The GraphHopper engine computed the distance matrix after snapping the locations to the road network, and Jsprit mathematically calculated the optimal TSP delivery sequence. Finally, the Go orchestrator asynchronously returned the optimized polyline route directly to the interactive Leaflet map.*
+
 ### 1. Clone & Download OSM Data
 
 ```bash
