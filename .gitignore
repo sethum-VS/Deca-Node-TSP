@@ -29,3 +29,7 @@ java-routing-engine/data/
 
 # Java build artifacts
 java-routing-engine/target/
+
+# Firebase
+.firebase/
+node_modules/
