@@ -18,8 +18,7 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /app
 
 COPY --from=builder /server .
-COPY --from=builder /app/internal/infrastructure/templates ./internal/infrastructure/templates
-COPY --from=builder /app/internal/infrastructure/static    ./internal/infrastructure/static
+COPY --from=builder /app/internal/templates ./internal/templates
 
 EXPOSE 8080
 
