@@ -95,6 +95,36 @@ Enter delivery stops as:
 | Sprint 2 | Java Microservice Initialization, Docker Network Integration |
 | Sprint 3 | GraphHopper & Jsprit Integration, OSM Dataset Ingestion, 5-step Pipeline (Geocode, Snap, Matrix, Solve, Respond) |
 | Sprint 4 | Leaflet Map Integration, Tailwind CSS UI, Map-based Pin Drops, Route Polylines |
+| Sprint 5 | Production CI/CD to GCP — Cloud Run (WIF), Artifact Registry, Firebase Hosting |
+| Sprint 6 | Pipeline Orchestration — Serialized deployments, VPC networking, Firebase routing fix |
+| Sprint 7 | Road Network Geometry — Real road paths from GraphHopper replace straight-line polylines |
+
+## Deployment & CI/CD
+
+The project uses a two-tier GitHub Actions pipeline:
+
+### CI — Branch Validation (`.github/workflows/ci.yml`)
+
+Triggers on every push to feature branches and on pull requests targeting `main`. Validates:
+- **Java**: Compiles the routing engine via `mvn clean package -DskipTests`
+- **Go**: Builds all packages via `go build ./...` and runs `go vet`
+
+> **Note:** Branch protection rules should be configured on `main` to require these status checks to pass before merging.
+
+### Production — Deploy to GCP (`.github/workflows/deploy-production.yml`)
+
+Triggers **only** on push to `main`. Deploys sequentially with `needs:` dependencies:
+
+```text
+deploy-java ──→ deploy-go ──→ deploy-firebase
+  (Cloud Run)     (Cloud Run)    (Firebase Hosting)
+```
+
+- **Java Routing Engine**: Builds Docker image (with pre-baked GraphHopper cache), pushes to Artifact Registry, deploys to Cloud Run (internal ingress).
+- **Go Orchestrator**: Builds Docker image, deploys to Cloud Run (public ingress, VPC egress to reach Java internally).
+- **Firebase Hosting**: Deploys `firebase.json` rewrite rules to proxy all traffic to the Go Cloud Run service.
+
+**Authentication**: Uses Workload Identity Federation (WIF) — no static JSON service account keys.
 
 ## Development
 
