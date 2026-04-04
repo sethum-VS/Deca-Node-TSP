@@ -148,6 +148,7 @@ jobs:
             --ingress=all \
             --allow-unauthenticated \
             --network=default \
+            --subnet=default \
             --set-env-vars ROUTING_ENGINE_URL="https://java-routing-engine-1047596610069.asia-southeast1.run.app" \
             --quiet
 
