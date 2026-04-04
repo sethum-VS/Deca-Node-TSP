@@ -1,5 +1,10 @@
-# ── Build stage ──────────────────────────────────────────
+# ── Build + Cache stage ──────────────────────────────────
+# Maven has full access to source, compiled classes, and
+# dependencies — so we run GraphCacheBuilder here directly.
 FROM maven:3.9-eclipse-temurin-21 AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends wget \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -7,31 +12,21 @@ WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Build the application
-COPY src ./src
-RUN mvn package -DskipTests -B
-
-# ── Cache-builder stage ──────────────────────────────────
-# Downloads the OSM PBF and pre-builds the GraphHopper
-# routing graph so it is baked into the final image.
-FROM eclipse-temurin:21-jre-jammy AS cache-builder
-
-WORKDIR /app
-
-COPY --from=builder /app/target/routing-engine-*.jar app.jar
-
 # Download Sri Lanka OSM data
 RUN mkdir -p /data \
-    && apt-get update && apt-get install -y --no-install-recommends wget \
     && wget -q -O /data/sri-lanka.osm.pbf \
-       https://download.geofabrik.de/asia/sri-lanka-latest.osm.pbf \
-    && apt-get purge -y wget && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+       https://download.geofabrik.de/asia/sri-lanka-latest.osm.pbf
 
-# Build the graph cache using the standalone CLI utility
-RUN mkdir -p /data/graph-cache \
-    && java -Xmx1G -cp app.jar \
-       com.decanode.routing.GraphCacheBuilder \
-       /data/sri-lanka.osm.pbf /data/graph-cache \
+# Build the application
+COPY src ./src
+RUN mvn clean package -DskipTests -B
+
+# Pre-build the GraphHopper routing graph cache using Maven exec
+# This runs GraphCacheBuilder with full classpath access (no fat-JAR issue)
+RUN mvn exec:java \
+    -Dexec.mainClass="com.decanode.routing.GraphCacheBuilder" \
+    -Dexec.args="/data/sri-lanka.osm.pbf /data/graph-cache" \
+    -Dexec.classpathScope="runtime" \
     && rm -f /data/sri-lanka.osm.pbf
 
 # ── Runtime stage ────────────────────────────────────────
@@ -42,7 +37,7 @@ WORKDIR /app
 COPY --from=builder /app/target/routing-engine-*.jar app.jar
 
 # Copy the pre-built graph cache (no PBF needed at runtime)
-COPY --from=cache-builder /data/graph-cache /data/graph-cache
+COPY --from=builder /data/graph-cache /data/graph-cache
 
 EXPOSE 8081
 
