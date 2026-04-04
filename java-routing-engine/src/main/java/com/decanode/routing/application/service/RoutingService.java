@@ -213,7 +213,7 @@ public class RoutingService {
                 GHRequest req = new GHRequest(
                         from.getLat(), from.getLng(),
                         to.getLat(), to.getLng()
-                ).setProfile("car");
+                ).setProfile("expressway_car");
 
                 GHResponse rsp = hopper.route(req);
                 if (rsp.hasErrors()) {
@@ -359,7 +359,7 @@ public class RoutingService {
             GHRequest ghReq = new GHRequest(
                     from.getLat(), from.getLng(),
                     to.getLat(), to.getLng()
-            ).setProfile("car");
+            ).setProfile("expressway_car");
 
             GHResponse ghResp = hopper.route(ghReq);
 

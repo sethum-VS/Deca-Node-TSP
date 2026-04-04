@@ -5,6 +5,10 @@ import com.graphhopper.config.CHProfile;
 import com.graphhopper.config.Profile;
 import com.graphhopper.util.GHUtility;
 
+import com.graphhopper.util.CustomModel;
+import static com.graphhopper.json.Statement.If;
+import static com.graphhopper.json.Statement.Op.MULTIPLY;
+
 /**
  * Standalone CLI utility to pre-build the GraphHopper routing graph cache.
  * Called during Docker image build so the graph-cache is baked into the image,
@@ -39,11 +43,16 @@ public class GraphCacheBuilder {
                 "car_access, car_average_speed, road_access, road_environment, max_speed, ferry_speed"
         );
 
-        hopper.setProfiles(new Profile("car").setCustomModel(
-                GHUtility.loadCustomModelFromJar("car.json")
-        ));
+        CustomModel customModel = new CustomModel();
+        customModel.setDistanceInfluence(15.0); // Favor speed over distance
+        customModel.addToPriority(If("road_class == MOTORWAY", MULTIPLY, "1.2"));
+        customModel.addToPriority(If("road_class == TRUNK", MULTIPLY, "1.1"));
 
-        hopper.getCHPreparationHandler().setCHProfiles(new CHProfile("car"));
+        hopper.setProfiles(new Profile("expressway_car")
+                .setCustomModel(customModel)
+                .setVehicle("car"));
+
+        hopper.getCHPreparationHandler().setCHProfiles(new CHProfile("expressway_car"));
 
         hopper.importOrLoad();
 
