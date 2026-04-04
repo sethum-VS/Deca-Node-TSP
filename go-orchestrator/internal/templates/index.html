@@ -427,7 +427,7 @@
     }
 
     // ── Draw Optimized Route (called by backend response) ─────
-    window.drawOptimizedRoute = function(routeData) {
+    window.drawOptimizedRoute = function(routeData, geometry) {
         clearRoute();
 
         if (!routeData || routeData.length === 0) return;
@@ -435,11 +435,11 @@
         // Remove original blue markers
         markers.forEach(m => map.removeLayer(m));
 
-        // Draw green optimized markers
-        const latlngs = [];
+        // Draw green optimized markers at stop coordinates
+        const stopLatLngs = [];
         routeData.forEach(function(point, i) {
             const ll = [point.lat, point.lng];
-            latlngs.push(ll);
+            stopLatLngs.push(ll);
 
             const marker = L.marker(ll, {
                 icon: createOptimizedIcon(i + 1)
@@ -450,26 +450,37 @@
             optimizedMarkers.push(marker);
         });
 
-        // Draw polyline
-        routePolyline = L.polyline(latlngs, {
+        // Determine polyline path: use detailed road geometry if available,
+        // otherwise fall back to straight lines between stops
+        let polylinePath;
+        if (geometry && geometry.length > 0) {
+            // geometry is an array of [lat, lng] pairs from GraphHopper
+            polylinePath = geometry.map(function(pt) { return [pt[0], pt[1]]; });
+        } else {
+            polylinePath = stopLatLngs;
+        }
+
+        // Draw main polyline (road path)
+        routePolyline = L.polyline(polylinePath, {
             color: '#1a73e8',
-            weight: 4,
+            weight: 5,
             opacity: 0.85,
             smoothFactor: 1,
-            dashArray: null
+            lineCap: 'round',
+            lineJoin: 'round'
         }).addTo(map);
 
         // Add animated direction arrows via a dashed overlay
-        L.polyline(latlngs, {
+        L.polyline(polylinePath, {
             color: '#ffffff',
             weight: 2,
-            opacity: 0.6,
+            opacity: 0.5,
             dashArray: '10, 20',
             smoothFactor: 1
         }).addTo(map);
 
         // Fit map bounds to the route
-        const bounds = L.latLngBounds(latlngs);
+        const bounds = L.latLngBounds(polylinePath);
         map.fitBounds(bounds, { padding: [60, 60] });
 
         // Show results container

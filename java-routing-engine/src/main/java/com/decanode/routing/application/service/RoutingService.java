@@ -323,6 +323,9 @@ public class RoutingService {
             }
         }
 
+        // ── Generate road network geometry via GraphHopper ──────────
+        List<double[]> routeGeometry = buildRouteGeometry(orderedRoute);
+
         double totalDistKm = Math.round(totalDistMeters / 100.0) / 10.0; // 1 decimal
         double totalTimeMin = Math.round(totalTimeSec / 6.0) / 10.0;     // 1 decimal
 
@@ -332,7 +335,50 @@ public class RoutingService {
                         orderedRoute.size(), totalDistKm, totalTimeMin),
                 orderedRoute,
                 totalDistKm,
-                totalTimeMin
+                totalTimeMin,
+                routeGeometry
         );
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // Step F: Build detailed road geometry from GraphHopper routing
+    // ════════════════════════════════════════════════════════════════
+
+    /**
+     * For each consecutive pair of stops in the optimized route, query
+     * GraphHopper for the actual road path (fastest/car profile) and
+     * concatenate the point lists into a single continuous geometry.
+     */
+    private List<double[]> buildRouteGeometry(List<Coordinate> orderedRoute) {
+        List<double[]> geometry = new ArrayList<>();
+
+        for (int i = 0; i < orderedRoute.size() - 1; i++) {
+            Coordinate from = orderedRoute.get(i);
+            Coordinate to = orderedRoute.get(i + 1);
+
+            GHRequest ghReq = new GHRequest(
+                    from.getLat(), from.getLng(),
+                    to.getLat(), to.getLng()
+            ).setProfile("car");
+
+            GHResponse ghResp = hopper.route(ghReq);
+
+            if (ghResp.hasErrors()) {
+                log.warn("Geometry routing error for leg {} -> {}: {}",
+                        i + 1, i + 2, ghResp.getErrors());
+                // Fallback: add straight-line from → to
+                geometry.add(new double[]{from.getLat(), from.getLng()});
+                geometry.add(new double[]{to.getLat(), to.getLng()});
+            } else {
+                ResponsePath path = ghResp.getBest();
+                var points = path.getPoints();
+                for (int p = 0; p < points.size(); p++) {
+                    geometry.add(new double[]{points.getLat(p), points.getLon(p)});
+                }
+            }
+        }
+
+        log.info("Step F complete: route geometry has {} points", geometry.size());
+        return geometry;
     }
 }

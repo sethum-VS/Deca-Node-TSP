@@ -42,6 +42,7 @@ type OptimizeResponse struct {
 	TotalStops       int          `json:"totalStops"`
 	TotalDistanceKm  float64      `json:"totalDistanceKm"`
 	EstimatedTimeMin float64      `json:"estimatedTimeMin"`
+	RouteGeometry    [][]float64  `json:"route_geometry"`
 }
 
 // ErrorResponse for Java error responses.
@@ -264,7 +265,8 @@ func buildResultHTML(resp *OptimizeResponse) string {
 
 	// ── Script tag to draw the polyline on the Leaflet map ───
 	routeJSON, _ := json.Marshal(resp.OptimizedRoute)
-	sb.WriteString(fmt.Sprintf(`<script>drawOptimizedRoute(%s);</script>`, string(routeJSON)))
+	geometryJSON, _ := json.Marshal(resp.RouteGeometry)
+	sb.WriteString(fmt.Sprintf(`<script>drawOptimizedRoute(%s, %s);</script>`, string(routeJSON), string(geometryJSON)))
 
 	return sb.String()
 }
