@@ -1,8 +1,8 @@
-package com.decanode.routing.application;
+package com.decanode.routing.application.service;
 
 import com.decanode.routing.domain.Coordinate;
-import com.decanode.routing.infrastructure.OptimizeResponse;
-import com.decanode.routing.infrastructure.StopInput;
+import com.decanode.routing.infrastructure.web.OptimizeResponse;
+import com.decanode.routing.infrastructure.web.StopInput;
 import com.graphhopper.GHRequest;
 import com.graphhopper.GHResponse;
 import com.graphhopper.GraphHopper;

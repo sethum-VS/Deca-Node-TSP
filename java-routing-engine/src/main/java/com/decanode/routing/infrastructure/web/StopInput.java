@@ -1,4 +1,4 @@
-package com.decanode.routing.infrastructure;
+package com.decanode.routing.infrastructure.web;
 
 /**
  * DTO for a single stop input. Supports two modes:

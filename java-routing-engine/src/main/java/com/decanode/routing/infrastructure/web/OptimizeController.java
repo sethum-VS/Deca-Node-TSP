@@ -1,6 +1,6 @@
-package com.decanode.routing.infrastructure;
+package com.decanode.routing.infrastructure.web;
 
-import com.decanode.routing.application.RoutingService;
+import com.decanode.routing.application.service.RoutingService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

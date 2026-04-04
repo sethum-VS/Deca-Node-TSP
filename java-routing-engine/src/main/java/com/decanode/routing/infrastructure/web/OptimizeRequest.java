@@ -1,4 +1,4 @@
-package com.decanode.routing.infrastructure;
+package com.decanode.routing.infrastructure.web;
 
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/sethum-VS/Deca-Node-TSP/go-orchestrator/internal/infrastructure/handlers"
+	"github.com/sethum-VS/Deca-Node-TSP/go-orchestrator/internal/handlers"
 )
 
 func main() {
@@ -15,10 +15,6 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-
-	// ── Static files ───────────────────────────────────────────────
-	staticDir := "internal/infrastructure/static"
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
 
 	// ── Page routes ────────────────────────────────────────────────
 	mux.HandleFunc("/", handlers.IndexHandler)

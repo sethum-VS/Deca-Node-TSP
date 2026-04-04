@@ -14,7 +14,7 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmplPath := filepath.Join("internal", "infrastructure", "templates", "index.html")
+	tmplPath := filepath.Join("internal", "templates", "index.html")
 	tmpl, err := template.ParseFiles(tmplPath)
 	if err != nil {
 		log.Printf("template parse error: %v", err)

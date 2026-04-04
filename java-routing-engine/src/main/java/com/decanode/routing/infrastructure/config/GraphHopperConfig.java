@@ -1,4 +1,4 @@
-package com.decanode.routing.application;
+package com.decanode.routing.infrastructure.config;
 
 import com.graphhopper.GraphHopper;
 import com.graphhopper.config.CHProfile;

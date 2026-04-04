@@ -101,6 +101,3 @@ cd go-orchestrator && go run cmd/server/main.go
 cd java-routing-engine && mvn spring-boot:run
 ```
 
-## License
-
-MIT
