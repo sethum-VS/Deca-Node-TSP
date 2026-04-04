@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-// IndexHandler serves the main page with the coordinate input form.
+// IndexHandler serves the main page with the coordinate input form. test
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
