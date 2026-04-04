@@ -56,13 +56,13 @@ var javaClient = &http.Client{
 	Timeout: 60 * time.Second,
 }
 
-// getJavaServiceURL returns the base URL of the Java routing engine.
 func getJavaServiceURL() string {
-	url := os.Getenv("JAVA_SERVICE_URL")
+	url := os.Getenv("ROUTING_ENGINE_URL")
 	if url == "" {
 		url = "http://localhost:8081"
 	}
-	return url
+	// Trim trailing slash to ensure correct path appending
+	return strings.TrimRight(url, "/")
 }
 
 // RouteHandler receives stop inputs via HTMX POST (hidden inputs named "stop"),
@@ -119,9 +119,9 @@ func RouteHandler(w http.ResponseWriter, r *http.Request) {
 				<div>
 					<p class="text-sm font-semibold text-error">Routing Engine Error</p>
 					<p class="text-xs text-on-surface-variant mt-1">%s</p>
-					<p class="text-xs text-on-surface-variant mt-1">Make sure both services are running via <code>docker-compose up</code>.</p>
+					<p class="text-xs text-on-surface-variant mt-1">Failed to reach the Routing Engine at %s. Please verify the service is running and accessible.</p>
 				</div>
-			</div>`, err.Error())
+			</div>`, err.Error(), getJavaServiceURL())
 		return
 	}
 	if errResp != nil {
