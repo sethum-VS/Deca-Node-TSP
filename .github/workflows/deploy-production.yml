@@ -134,15 +134,6 @@ jobs:
           docker push "${IMAGE_URI}"
           docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:latest"
 
-      - name: Get Java service internal URL
-        id: java-url
-        run: |
-          JAVA_URL=$(gcloud run services describe ${{ env.JAVA_SERVICE }} \
-            --region=${{ env.REGION }} \
-            --project=${{ secrets.GCP_PROJECT_ID }} \
-            --format='value(status.url)')
-          echo "url=${JAVA_URL}" >> "$GITHUB_OUTPUT"
-
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${{ env.SERVICE }} \
@@ -156,7 +147,7 @@ jobs:
             --port=8080 \
             --ingress=all \
             --allow-unauthenticated \
-            --set-env-vars="JAVA_SERVICE_URL=${{ steps.java-url.outputs.url }}" \
+            --set-env-vars ROUTING_ENGINE_URL="https://java-routing-engine-1047596610069.asia-southeast1.run.app" \
             --quiet
 
   # ════════════════════════════════════════════════════════
