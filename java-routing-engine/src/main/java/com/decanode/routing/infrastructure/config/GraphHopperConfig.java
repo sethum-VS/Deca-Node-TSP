@@ -11,6 +11,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.graphhopper.util.CustomModel;
+import static com.graphhopper.json.Statement.If;
+import static com.graphhopper.json.Statement.Op.MULTIPLY;
+
 /**
  * Initializes GraphHopper as a Spring-managed singleton bean.
  * The OSM PBF file is loaded once at startup; subsequent startups
@@ -44,13 +48,16 @@ public class GraphHopperConfig {
         // Encoded values for car routing
         hopper.setEncodedValuesString("car_access, car_average_speed, road_access, road_environment, max_speed, ferry_speed");
 
-        // Car routing profile with built-in custom model
-        hopper.setProfiles(new Profile("car").setCustomModel(
-                GHUtility.loadCustomModelFromJar("car.json")
-        ));
+        CustomModel customModel = new CustomModel();
+        customModel.setDistanceInfluence(15.0); // Favor speed over distance
+        customModel.addToPriority(If("road_class == MOTORWAY", MULTIPLY, "1.2"));
+        customModel.addToPriority(If("road_class == TRUNK", MULTIPLY, "1.1"));
+
+        hopper.setProfiles(new Profile("expressway_car")
+                .setCustomModel(customModel));
 
         // Enable Contraction Hierarchies for fast routing queries
-        hopper.getCHPreparationHandler().setCHProfiles(new CHProfile("car"));
+        hopper.getCHPreparationHandler().setCHProfiles(new CHProfile("expressway_car"));
 
         long start = System.currentTimeMillis();
         hopper.importOrLoad();
