@@ -21,7 +21,7 @@ func withCSP(next http.Handler) http.Handler {
 		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; " +
 		"font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com; " +
 		"img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com; " +
-		"connect-src 'self' https://photon.komoot.io; " +
+		"connect-src 'self' https://photon.komoot.io https://unpkg.com; " +
 		"frame-ancestors 'none';"
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
