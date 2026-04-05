@@ -40,7 +40,7 @@ public class GraphCacheBuilder {
         hopper.setGraphHopperLocation(cacheDir);
 
         hopper.setEncodedValuesString(
-                "car_access, car_average_speed, road_access, road_environment, max_speed, ferry_speed"
+                "car_access, car_average_speed, road_access, road_environment, max_speed, ferry_speed, road_class"
         );
 
         CustomModel customModel = new CustomModel();

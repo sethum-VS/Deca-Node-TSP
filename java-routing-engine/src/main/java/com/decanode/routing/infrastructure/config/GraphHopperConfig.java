@@ -46,7 +46,7 @@ public class GraphHopperConfig {
         hopper.setGraphHopperLocation(graphLocation);
 
         // Encoded values for car routing
-        hopper.setEncodedValuesString("car_access, car_average_speed, road_access, road_environment, max_speed, ferry_speed");
+        hopper.setEncodedValuesString("car_access, car_average_speed, road_access, road_environment, max_speed, ferry_speed, road_class");
 
         CustomModel customModel = new CustomModel();
         customModel.setDistanceInfluence(15.0); // Favor speed over distance
