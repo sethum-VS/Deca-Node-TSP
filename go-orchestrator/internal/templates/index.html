@@ -56,6 +56,19 @@
 </head>
 <body class="bg-background font-body text-on-surface antialiased overflow-hidden">
 
+<!-- ── Anti-FOUC Initial Loader ──────────────────────────────── -->
+<!-- Pure inline styles so this works BEFORE tailwind.css arrives -->
+<div id="initial-loader" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#f3f4f6;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+    <!-- Animated spinner (inline SVG, no external deps) -->
+    <svg style="animation:spin 0.9s linear infinite;width:44px;height:44px;" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="22" cy="22" r="18" stroke="#e5e7eb" stroke-width="4"/>
+        <path d="M40 22a18 18 0 0 0-18-18" stroke="#005bbf" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+    <p style="font-family:sans-serif;font-size:13px;color:#6b7280;letter-spacing:0.05em;">Loading Deca-Node&hellip;</p>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+</div>
+<script>window.addEventListener('load',function(){var l=document.getElementById('initial-loader');if(l)l.style.display='none';});</script>
+
 <!-- ── Leaflet Map (full-screen background) ──────────────────── -->
 <div class="fixed inset-0 z-0 w-screen h-screen" id="map"></div>
 
@@ -86,7 +99,8 @@
 
         <!-- Navigation -->
         <nav class="space-y-1">
-            <button type="button" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('map-overlay').classList.add('hidden');" class="w-full flex items-center gap-3 px-4 py-2.5 bg-primary-fixed/50 text-primary rounded-xl font-semibold text-sm hover:bg-primary-fixed/80 transition-colors">
+            <!-- Desktop: toggles sidebar collapse. Mobile: hides overlay too. -->
+            <button type="button" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('map-overlay').classList.toggle('hidden');" class="w-full flex items-center gap-3 px-4 py-2.5 bg-primary-fixed/50 text-primary rounded-xl font-semibold text-sm hover:bg-primary-fixed/80 transition-colors">
                 <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">conversion_path</span>
                 Route Builder
             </button>
@@ -104,13 +118,15 @@
 
 <!-- ── Main Panel (Bottom Sheet on Mobile, Floating on Desktop) ── -->
 <main id="bottom-sheet" class="fixed bottom-0 md:top-0 left-0 md:left-80 z-20 w-full md:w-96 max-h-[50vh] md:max-h-[calc(100vh-2rem)] md:m-4 overflow-y-auto no-scrollbar transition-transform duration-300 ease-out bg-white md:bg-surface-container-lowest/95 backdrop-blur-md rounded-t-3xl md:rounded-xl shadow-[0_-4px_25px_rgba(0,0,0,0.15)] md:shadow-2xl md:border md:border-white/20">
-    <!-- Visual drag handle for mobile affordance (touch target) -->
-    <div id="drag-handle" class="w-16 h-1.5 bg-outline-variant/60 rounded-full mx-auto mt-3 mb-1 md:hidden touch-none cursor-grab"></div>
-    
-    <div class="p-5 md:p-6 flex flex-col gap-5 md:gap-6 h-full">
 
-        <!-- Header -->
-        <div class="flex items-center justify-between">
+    <!-- ── Expanded touch zone: pill + title + search bar ──────── -->
+    <!-- touch-none prevents native browser scroll-handling on this strip -->
+    <div id="sheet-drag-header" class="touch-none cursor-grab select-none px-5 pt-3 pb-4 md:cursor-auto md:touch-auto">
+        <!-- Drag pill (mobile only) -->
+        <div class="w-16 h-1.5 bg-outline-variant/60 rounded-full mx-auto mb-3 md:hidden"></div>
+
+        <!-- Title -->
+        <div class="flex items-center justify-between mb-4">
             <h2 class="font-headline text-xl font-extrabold tracking-tight text-on-surface">Deca-Node TSP Solver</h2>
         </div>
 
@@ -119,6 +135,9 @@
             <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/60 group-focus-within:text-primary transition-colors">search</span>
             <input id="search-input" class="w-full h-12 pl-12 pr-4 bg-surface-container-lowest border-none rounded-xl shadow-sm ring-1 ring-outline-variant/30 focus:ring-2 focus:ring-primary focus:shadow-md transition-all placeholder:text-on-surface-variant/50 text-sm" placeholder="Search for a location..." type="text"/>
         </div>
+    </div>
+    <!-- Everything below retains normal overflow-y-auto scroll behaviour -->
+    <div class="px-5 pb-5 flex flex-col gap-5"><!-- scrollable content -->
 
         <!-- Form with HTMX -->
         <form id="route-form" class="space-y-6" hx-post="/route" hx-target="#results-container" hx-indicator="#loading-skeleton">
@@ -179,7 +198,7 @@
         <!-- Results container (HTMX swaps content here) -->
         <div class="mt-2 border-t border-surface-variant pt-6 hidden transition-all" id="results-container">
         </div>
-    </div>
+    </div><!-- /scrollable content -->
 </main>
 
 <!-- ═══════════════════════════════════════════════════════════════
@@ -506,57 +525,56 @@
 (function () {
     'use strict';
 
-    // Only attach swipe logic on mobile screens
+    // Only attach swipe logic on mobile screens (< md breakpoint)
     if (window.innerWidth >= 768) return;
 
-    const sheet  = document.getElementById('bottom-sheet');
-    const handle = document.getElementById('drag-handle');
-    if (!sheet || !handle) return;
+    const sheet      = document.getElementById('bottom-sheet');
+    const dragHeader = document.getElementById('sheet-drag-header'); // expanded touch zone
+    if (!sheet || !dragHeader) return;
 
-    const SNAP_THRESHOLD = 80; // px drag-down to trigger minimise
-    const MINIMISED_Y    = '35vh'; // how far down to push the sheet
+    const SNAP_THRESHOLD = 80;    // px drag-down to trigger minimise
+    const MINIMISED_Y    = '35vh'; // translateY when minimised
 
     let startY     = 0;
     let isDragging = false;
     let minimised  = false;
 
-    handle.addEventListener('touchstart', function (e) {
+    dragHeader.addEventListener('touchstart', function (e) {
+        // Don't start drag if the user is tapping inside the search input
+        if (e.target.id === 'search-input') return;
         startY     = e.touches[0].clientY;
         isDragging = true;
-        sheet.style.transition = 'none'; // disable CSS transition while dragging
+        sheet.style.transition = 'none';
     }, { passive: true });
 
-    handle.addEventListener('touchmove', function (e) {
+    dragHeader.addEventListener('touchmove', function (e) {
         if (!isDragging) return;
         const deltaY = e.touches[0].clientY - startY;
 
         if (!minimised && deltaY > 0) {
-            // Dragging down from default position
             sheet.style.transform = 'translateY(' + deltaY + 'px)';
         } else if (minimised && deltaY < 0) {
-            // Dragging up from minimised position
             sheet.style.transform = 'translateY(calc(' + MINIMISED_Y + ' + ' + deltaY + 'px))';
         }
     }, { passive: true });
 
-    handle.addEventListener('touchend', function (e) {
+    dragHeader.addEventListener('touchend', function (e) {
         if (!isDragging) return;
         isDragging = false;
-        sheet.style.transition = 'transform 0.3s ease-out'; // restore animation
+        sheet.style.transition = 'transform 0.3s ease-out';
 
         const deltaY = e.changedTouches[0].clientY - startY;
 
         if (!minimised && deltaY > SNAP_THRESHOLD) {
-            // Snap to minimised
             sheet.style.transform = 'translateY(' + MINIMISED_Y + ')';
             minimised = true;
         } else if (minimised && deltaY < -SNAP_THRESHOLD) {
-            // Snap back to full height
             sheet.style.transform = 'translateY(0)';
             minimised = false;
         } else {
-            // Snap back to current state
-            sheet.style.transform = minimised ? 'translateY(' + MINIMISED_Y + ')' : 'translateY(0)';
+            sheet.style.transform = minimised
+                ? 'translateY(' + MINIMISED_Y + ')'
+                : 'translateY(0)';
         }
     });
 }());
