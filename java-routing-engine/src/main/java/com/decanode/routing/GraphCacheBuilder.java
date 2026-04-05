@@ -48,13 +48,18 @@ public class GraphCacheBuilder {
         customModel.setDistanceInfluence(5.0); // Severely drop distance importance
 
         // 1. Strict Speed Limits (Sri Lanka Mapping)
-        customModel.addToSpeed(If("true", LIMIT, "100")); // Baseline: E-Class (MOTORWAY, MOTORWAY_LINK)
-        customModel.addToSpeed(If("road_class == TRUNK || road_class == PRIMARY", LIMIT, "70")); // A-Class Roads
-        customModel.addToSpeed(If("road_class == SECONDARY || road_class == TERTIARY || road_class == RESIDENTIAL || road_class == UNCLASSIFIED", LIMIT, "50")); // B-Class & Minor Roads
+        // road_class == MOTORWAY automatically applies to both the highway and its on-ramps
+        customModel.addToSpeed(If("road_class == MOTORWAY", LIMIT, "100"));
+        // Explicitly cap A-Class
+        customModel.addToSpeed(If("road_class == TRUNK || road_class == PRIMARY", LIMIT, "70"));
+        // Explicitly cap B-Class & Minor
+        customModel.addToSpeed(If("road_class == SECONDARY || road_class == TERTIARY || road_class == RESIDENTIAL || road_class == UNCLASSIFIED", LIMIT, "50"));
+        // The Safety Net: Catch any weird leftover OSM tags
+        customModel.addToSpeed(If("true", LIMIT, "40"));
 
         // 2. Aggressive Priority Penalties (The forcing function)
-        // Note: We do NOT penalize MOTORWAY_LINK, allowing seamless on-ramp routing
-        customModel.addToPriority(If("road_class != MOTORWAY && road_class != MOTORWAY_LINK", MULTIPLY, "0.5"));
+        // This safely penalizes normal roads, while leaving the expressway and its ramps untouched
+        customModel.addToPriority(If("road_class != MOTORWAY", MULTIPLY, "0.5"));
 
         hopper.setProfiles(new Profile("expressway_car")
                 .setCustomModel(customModel));
