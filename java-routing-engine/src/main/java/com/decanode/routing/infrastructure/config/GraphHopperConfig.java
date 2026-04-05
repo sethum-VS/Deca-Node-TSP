@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
 import com.graphhopper.util.CustomModel;
 import static com.graphhopper.json.Statement.If;
 import static com.graphhopper.json.Statement.Op.MULTIPLY;
+import static com.graphhopper.json.Statement.Op.LIMIT;
 
 /**
  * Initializes GraphHopper as a Spring-managed singleton bean.
@@ -50,6 +51,11 @@ public class GraphHopperConfig {
 
         CustomModel customModel = new CustomModel();
         customModel.setDistanceInfluence(15.0); // Favor speed over distance
+
+        // Required baseline speed statement (GH 11 rejects empty speed list)
+        customModel.addToSpeed(If("true", LIMIT, "100"));
+
+        // Boost motorways and trunk roads
         customModel.addToPriority(If("road_class == MOTORWAY", MULTIPLY, "1.2"));
         customModel.addToPriority(If("road_class == TRUNK", MULTIPLY, "1.1"));
 
