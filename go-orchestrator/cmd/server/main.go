@@ -20,7 +20,7 @@ func main() {
 	mux.HandleFunc("/", handlers.IndexHandler)
 
 	// ── Static assets ──────────────────────────────────────────────
-	mux.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("public/css"))))
+	mux.Handle("/css/", http.FileServer(http.Dir("./public")))
 
 	// ── HTMX API routes ────────────────────────────────────────────
 	mux.HandleFunc("/route", handlers.RouteHandler)
