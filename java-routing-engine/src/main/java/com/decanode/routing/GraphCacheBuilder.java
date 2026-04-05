@@ -45,14 +45,16 @@ public class GraphCacheBuilder {
         );
 
         CustomModel customModel = new CustomModel();
-        customModel.setDistanceInfluence(15.0); // Favor speed over distance
+        customModel.setDistanceInfluence(5.0); // Severely drop distance importance
 
-        // Required baseline speed statement (GH 11 rejects empty speed list)
-        customModel.addToSpeed(If("true", LIMIT, "100"));
+        // 1. Strict Speed Limits (Sri Lanka Mapping)
+        customModel.addToSpeed(If("true", LIMIT, "100")); // Baseline: E-Class (MOTORWAY, MOTORWAY_LINK)
+        customModel.addToSpeed(If("road_class == TRUNK || road_class == PRIMARY", LIMIT, "70")); // A-Class Roads
+        customModel.addToSpeed(If("road_class == SECONDARY || road_class == TERTIARY || road_class == RESIDENTIAL || road_class == UNCLASSIFIED", LIMIT, "50")); // B-Class & Minor Roads
 
-        // Boost motorways and trunk roads
-        customModel.addToPriority(If("road_class == MOTORWAY", MULTIPLY, "1.2"));
-        customModel.addToPriority(If("road_class == TRUNK", MULTIPLY, "1.1"));
+        // 2. Aggressive Priority Penalties (The forcing function)
+        // Note: We do NOT penalize MOTORWAY_LINK, allowing seamless on-ramp routing
+        customModel.addToPriority(If("road_class != MOTORWAY && road_class != MOTORWAY_LINK", MULTIPLY, "0.5"));
 
         hopper.setProfiles(new Profile("expressway_car")
                 .setCustomModel(customModel));
