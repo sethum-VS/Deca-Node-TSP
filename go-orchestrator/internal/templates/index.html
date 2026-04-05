@@ -2,7 +2,7 @@
 <html class="light" lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual-viewport" name="viewport"/>
 <title>Deca-Node | TSP Optimization Engine</title>
 <meta name="description" content="Deca-Node: Real-time delivery route optimization using GraphHopper and jsprit TSP solver"/>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -546,13 +546,13 @@
 
 <!-- ═══════════════════════════════════════════════════════════════
      Vanilla JS — Route Builder toggle + Mobile keyboard fix
+     Covers: Android Chrome (visualViewport) + iOS Safari (focus/blur fallback)
      ═══════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
     'use strict';
 
     // ── Route Builder button: toggles #bottom-sheet on desktop ────
-    // On mobile it also dismisses the sidebar drawer + overlay.
     var btnRouteBuilder = document.getElementById('btn-route-builder');
     var bottomSheet     = document.getElementById('bottom-sheet');
     var sidebar         = document.getElementById('sidebar');
@@ -560,10 +560,7 @@
 
     if (btnRouteBuilder && bottomSheet) {
         btnRouteBuilder.addEventListener('click', function () {
-            // Always toggle the main content panel
             bottomSheet.classList.toggle('hidden');
-
-            // On mobile also close the sidebar drawer
             if (window.innerWidth < 768) {
                 if (sidebar)    sidebar.classList.add('-translate-x-full');
                 if (mapOverlay) mapOverlay.classList.add('hidden');
@@ -571,34 +568,95 @@
         });
     }
 
-    // ── Mobile virtual keyboard: keep #bottom-sheet above the keyboard ─
-    // When the on-screen keyboard appears, window.innerHeight shrinks but
-    // visualViewport.height gives the true visible area. We re-anchor the
-    // sheet's bottom edge so it never gets obscured by the keyboard.
-    if (window.visualViewport && window.innerWidth < 768) {
-        var sheet = document.getElementById('bottom-sheet');
-        if (!sheet) return;
+    // ══════════════════════════════════════════════════════════════
+    // Mobile keyboard: anchor #bottom-sheet above the keyboard
+    // Strategy:
+    //   Primary  → visualViewport 'resize' event (Android + iOS 15.4+)
+    //   Fallback → focus/blur on the search input (iOS Safari < 15.4)
+    //
+    // Key formula: keyboard height = window.innerHeight - vv.height
+    //   We intentionally skip vv.offsetTop because on Android's first
+    //   resize event offsetTop is temporarily wrong and causes the jump.
+    //
+    // We use requestAnimationFrame so our DOM write runs AFTER the
+    // browser finishes its own layout pass (prevents the first-tap jump).
+    // ══════════════════════════════════════════════════════════════
+    if (window.innerWidth >= 768) return; // desktop: nothing to do
 
-        function onViewportResize() {
-            var vv = window.visualViewport;
-            // Distance from the bottom of the visual viewport to the bottom of the layout viewport
-            var keyboardHeight = window.innerHeight - vv.height - vv.offsetTop;
-            if (keyboardHeight > 50) {
-                // Keyboard is open — lift the sheet above it
-                sheet.style.bottom = keyboardHeight + 'px';
-                // Ensure sheet is at a reasonable height (not minimised)
-                if (sheet.style.transform === 'translateY(35vh)') {
-                    sheet.style.transition = 'transform 0.2s ease-out';
-                    sheet.style.transform  = 'translateY(0)';
-                }
-            } else {
-                // Keyboard closed — return to bottom: 0
-                sheet.style.bottom = '0px';
-            }
+    var sheet       = document.getElementById('bottom-sheet');
+    var searchInput = document.getElementById('search-input');
+    if (!sheet) return;
+
+    var rafPending     = false;  // rAF debounce flag
+    var lastKbHeight   = 0;      // track last applied keyboard height
+    var kbOpenByFocus  = false;  // iOS fallback: did we open via focus?
+
+    // ── Core apply function ── called inside rAF callback ─────────
+    function applyKeyboardOffset(kbHeight) {
+        if (kbHeight === lastKbHeight) return;  // no change, skip
+        lastKbHeight = kbHeight;
+
+        if (kbHeight > 50) {
+            // Keyboard open: lift the sheet above it
+            sheet.style.transition = 'bottom 0.12s ease-out';
+            sheet.style.bottom     = kbHeight + 'px';
+        } else {
+            // Keyboard closed: return to pinned bottom
+            sheet.style.transition = 'bottom 0.2s ease-out';
+            sheet.style.bottom     = '0px';
+        }
+    }
+
+    // ── visualViewport handler (primary — Android Chrome + modern iOS) ──
+    if (window.visualViewport) {
+        function scheduleViewportUpdate() {
+            if (rafPending) return;          // already have a frame queued
+            rafPending = true;
+            requestAnimationFrame(function () {
+                rafPending = false;
+                var vv = window.visualViewport;
+                // Do NOT include vv.offsetTop — it misfires on Android first tap
+                var kbHeight = Math.round(Math.max(0, window.innerHeight - vv.height));
+                applyKeyboardOffset(kbHeight);
+            });
         }
 
-        window.visualViewport.addEventListener('resize', onViewportResize);
-        window.visualViewport.addEventListener('scroll', onViewportResize);
+        window.visualViewport.addEventListener('resize', scheduleViewportUpdate);
+        // 'scroll' fires on iOS when the page shifts under the keyboard
+        window.visualViewport.addEventListener('scroll', scheduleViewportUpdate);
+    }
+
+    // ── focus/blur fallback (iOS Safari primary path before 15.4) ──
+    // iOS Safari sometimes fires visualViewport.resize late/unreliably.
+    // We also listen directly to the input so we always get a response.
+    if (searchInput) {
+        searchInput.addEventListener('focus', function () {
+            kbOpenByFocus = true;
+            // iOS keyboard animation takes ~300 ms
+            setTimeout(function () {
+                var vv = window.visualViewport;
+                if (!vv) return;
+                var kbHeight = Math.round(Math.max(0, window.innerHeight - vv.height));
+                // On iOS the height might still be settling; take max of two readings
+                if (kbHeight < 50) {
+                    // second check after another 200 ms
+                    setTimeout(function () {
+                        var kbH2 = Math.round(Math.max(0, window.innerHeight - vv.height));
+                        applyKeyboardOffset(kbH2);
+                    }, 200);
+                } else {
+                    applyKeyboardOffset(kbHeight);
+                }
+            }, 300);
+        });
+
+        searchInput.addEventListener('blur', function () {
+            kbOpenByFocus = false;
+            // Small delay — iOS keyboard close animation takes ~250 ms
+            setTimeout(function () {
+                applyKeyboardOffset(0);
+            }, 260);
+        });
     }
 
 }());</script>
