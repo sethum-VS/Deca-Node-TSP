@@ -52,7 +52,7 @@ public class GraphHopperConfig {
         hopper.setEncodedValuesString("car_access, car_average_speed, road_access, road_environment, max_speed, ferry_speed, road_class");
 
         CustomModel customModel = new CustomModel();
-        customModel.setDistanceInfluence(5.0);
+        customModel.setDistanceInfluence(25.0); // Restored balance for detours
 
         // 1. Speed Limits (Properly chained block)
         customModel.addToSpeed(If("road_class == MOTORWAY", LIMIT, "100"));
@@ -60,9 +60,10 @@ public class GraphHopperConfig {
         customModel.addToSpeed(ElseIf("road_class == SECONDARY || road_class == TERTIARY || road_class == RESIDENTIAL || road_class == UNCLASSIFIED", LIMIT, "50"));
         customModel.addToSpeed(Else(LIMIT, "40")); // Mandatory unconditional fallback
 
-        // 2. Priority Penalties (Properly chained block)
-        customModel.addToPriority(If("road_class != MOTORWAY", MULTIPLY, "0.5"));
-        customModel.addToPriority(Else(MULTIPLY, "1.0")); // Mandatory unconditional fallback
+        // 2. Tiered Priority Penalties (Properly chained)
+        customModel.addToPriority(If("road_class == TRUNK || road_class == PRIMARY", MULTIPLY, "0.8"));
+        customModel.addToPriority(ElseIf("road_class != MOTORWAY", MULTIPLY, "0.6"));
+        customModel.addToPriority(Else(MULTIPLY, "1.0")); // Fallback (Motorways stay at 1.0)
 
         hopper.setProfiles(new Profile("expressway_car")
                 .setCustomModel(customModel));
