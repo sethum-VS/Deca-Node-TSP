@@ -13,9 +13,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /server ./cmd/server
 # Fix Alpine glibc compatibility for the Tailwind standalone binary
 RUN apk add --no-cache libc6-compat
 
-# Download Tailwind CLI and build CSS
+# Download Tailwind CLI v3.4.17 (pinned — v4 uses incompatible CSS engine) and build CSS
 RUN mkdir -p ./public/css \
-    && wget https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
+    && wget https://github.com/tailwindlabs/tailwindcss/releases/download/v3.4.17/tailwindcss-linux-x64 \
     && chmod +x tailwindcss-linux-x64 \
     && ./tailwindcss-linux-x64 -i ./internal/static/css/input.css -o ./public/css/tailwind.css --minify
 
