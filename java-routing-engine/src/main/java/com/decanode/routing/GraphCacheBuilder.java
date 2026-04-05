@@ -7,6 +7,8 @@ import com.graphhopper.util.GHUtility;
 
 import com.graphhopper.util.CustomModel;
 import static com.graphhopper.json.Statement.If;
+import static com.graphhopper.json.Statement.ElseIf;
+import static com.graphhopper.json.Statement.Else;
 import static com.graphhopper.json.Statement.Op.MULTIPLY;
 import static com.graphhopper.json.Statement.Op.LIMIT;
 
@@ -45,21 +47,17 @@ public class GraphCacheBuilder {
         );
 
         CustomModel customModel = new CustomModel();
-        customModel.setDistanceInfluence(5.0); // Severely drop distance importance
+        customModel.setDistanceInfluence(5.0);
 
-        // 1. Strict Speed Limits (Sri Lanka Mapping)
-        // road_class == MOTORWAY automatically applies to both the highway and its on-ramps
+        // 1. Speed Limits (Properly chained block)
         customModel.addToSpeed(If("road_class == MOTORWAY", LIMIT, "100"));
-        // Explicitly cap A-Class
-        customModel.addToSpeed(If("road_class == TRUNK || road_class == PRIMARY", LIMIT, "70"));
-        // Explicitly cap B-Class & Minor
-        customModel.addToSpeed(If("road_class == SECONDARY || road_class == TERTIARY || road_class == RESIDENTIAL || road_class == UNCLASSIFIED", LIMIT, "50"));
-        // The Safety Net: Catch any weird leftover OSM tags
-        customModel.addToSpeed(If("true", LIMIT, "40"));
+        customModel.addToSpeed(ElseIf("road_class == TRUNK || road_class == PRIMARY", LIMIT, "70"));
+        customModel.addToSpeed(ElseIf("road_class == SECONDARY || road_class == TERTIARY || road_class == RESIDENTIAL || road_class == UNCLASSIFIED", LIMIT, "50"));
+        customModel.addToSpeed(Else(LIMIT, "40")); // Mandatory unconditional fallback
 
-        // 2. Aggressive Priority Penalties (The forcing function)
-        // This safely penalizes normal roads, while leaving the expressway and its ramps untouched
+        // 2. Priority Penalties (Properly chained block)
         customModel.addToPriority(If("road_class != MOTORWAY", MULTIPLY, "0.5"));
+        customModel.addToPriority(Else(MULTIPLY, "1.0")); // Mandatory unconditional fallback
 
         hopper.setProfiles(new Profile("expressway_car")
                 .setCustomModel(customModel));
