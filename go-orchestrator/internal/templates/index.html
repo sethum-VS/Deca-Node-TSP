@@ -55,8 +55,8 @@
     /* ── Mobile keyboard: keep bottom-sheet anchored to visual viewport ── */
     @media (max-width: 767px) {
         #bottom-sheet {
-            /* transition handles both transform-based snap AND keyboard repositioning */
-            transition: transform 0.3s ease-out, bottom 0.15s ease-out;
+            /* All three properties animate: swipe snap + keyboard lift + maxHeight cap */
+            transition: transform 0.3s ease-out, bottom 0.15s ease-out, max-height 0.15s ease-out;
         }
     }
 </style>
@@ -77,7 +77,8 @@
 <script>window.addEventListener('load',function(){var l=document.getElementById('initial-loader');if(l)l.style.display='none';});</script>
 
 <!-- ── Leaflet Map (full-screen background) ──────────────────── -->
-<div class="fixed inset-0 z-0 w-screen h-screen" id="map"></div>
+<!-- h-[100dvh]: dynamic viewport height adapts when mobile keyboards open -->
+<div class="fixed inset-0 z-0 w-screen h-[100dvh]" id="map"></div>
 
 <!-- Mobile Hamburger Menu Button -->
 <button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('map-overlay').classList.toggle('hidden');" class="md:hidden fixed top-4 left-4 z-30 p-2 bg-white rounded-xl shadow-lg hover:bg-gray-50 text-slate-800 transition-colors">
@@ -88,7 +89,8 @@
 <div id="map-overlay" class="fixed inset-0 bg-slate-900/40 z-40 hidden md:hidden transition-opacity" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full'); this.classList.toggle('hidden');"></div>
 
 <!-- ── Left Sidebar (Drawer on Mobile, Panel on Desktop) ──────── -->
-<aside id="sidebar" class="fixed left-0 top-0 z-50 flex flex-col bg-white dark:bg-slate-900 md:rounded-3xl h-full md:h-[calc(100vh-2rem)] w-[80wv] max-w-sm md:w-72 md:m-4 shadow-2xl font-plus-jakarta-sans text-sm transition-transform duration-300 transform -translate-x-full md:translate-x-0 no-scrollbar overflow-y-auto">
+<!-- h-[100dvh]: dynamic viewport height so sidebar fills correctly on mobile -->
+<aside id="sidebar" class="fixed left-0 top-0 z-50 flex flex-col bg-white dark:bg-slate-900 md:rounded-3xl h-[100dvh] md:h-[calc(100dvh-2rem)] w-[80vw] max-w-sm md:w-72 md:m-4 shadow-2xl font-plus-jakarta-sans text-sm transition-transform duration-300 transform -translate-x-full md:translate-x-0 no-scrollbar overflow-y-auto">
     <div class="p-6">
         <div class="flex items-center gap-3 mb-8">
             <div class="w-10 h-10 bg-primary-container rounded-xl flex items-center justify-center text-white">
@@ -592,18 +594,29 @@
     var kbOpenByFocus  = false;  // iOS fallback: did we open via focus?
 
     // ── Core apply function ── called inside rAF callback ─────────
+    // Also sets maxHeight so the sheet content never overflows when
+    // the visual viewport shrinks due to the keyboard.
     function applyKeyboardOffset(kbHeight) {
         if (kbHeight === lastKbHeight) return;  // no change, skip
         lastKbHeight = kbHeight;
 
         if (kbHeight > 50) {
-            // Keyboard open: lift the sheet above it
-            sheet.style.transition = 'bottom 0.12s ease-out';
+            var vv = window.visualViewport;
+            // Keyboard open: lift the sheet above it AND cap its height
+            sheet.style.transition = 'bottom 0.12s ease-out, max-height 0.12s ease-out';
             sheet.style.bottom     = kbHeight + 'px';
+            // maxHeight = usable visual viewport height so content never gets cut off
+            if (vv) sheet.style.maxHeight = vv.height + 'px';
+            // Snap back to expanded position if it was swiped down
+            if (sheet.style.transform && sheet.style.transform !== 'translateY(0px)' && sheet.style.transform !== 'translateY(0)') {
+                sheet.style.transition = 'transform 0.2s ease-out, bottom 0.12s ease-out, max-height 0.12s ease-out';
+                sheet.style.transform  = 'translateY(0)';
+            }
         } else {
-            // Keyboard closed: return to pinned bottom
-            sheet.style.transition = 'bottom 0.2s ease-out';
+            // Keyboard closed: restore natural bottom and remove explicit maxHeight
+            sheet.style.transition = 'bottom 0.2s ease-out, max-height 0.2s ease-out';
             sheet.style.bottom     = '0px';
+            sheet.style.maxHeight  = '';   // let Tailwind class (max-h-[50vh]) take over again
         }
     }
 
@@ -632,6 +645,13 @@
     if (searchInput) {
         searchInput.addEventListener('focus', function () {
             kbOpenByFocus = true;
+
+            // Task 3 — Snap sheet to expanded state immediately on focus.
+            // The keyboard open will shrink the viewport; make sure the
+            // sheet is fully visible BEFORE we measure keyboard height.
+            sheet.style.transition = 'transform 0.2s ease-out';
+            sheet.style.transform  = 'translateY(0)';
+
             // iOS keyboard animation takes ~300 ms
             setTimeout(function () {
                 var vv = window.visualViewport;
@@ -655,6 +675,10 @@
             // Small delay — iOS keyboard close animation takes ~250 ms
             setTimeout(function () {
                 applyKeyboardOffset(0);
+                // iOS Safari quirk: dismissing the keyboard sometimes leaves
+                // a blank white area at the bottom of the screen. Force a
+                // scroll-to-top of the layout viewport to reclaim that space.
+                window.scrollTo(0, 0);
             }, 260);
         });
     }
