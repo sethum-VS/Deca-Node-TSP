@@ -63,15 +63,15 @@
 <div class="fixed inset-0 z-0 w-screen h-screen" id="map"></div>
 
 <!-- Mobile Hamburger Menu Button -->
-<button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('map-overlay').classList.toggle('hidden');" class="md:hidden fixed top-4 left-4 z-30 p-2 bg-white rounded-xl shadow-lg hover:bg-gray-50 text-slate-800 transition-colors">
+<button onclick="document.getElementById('left-panel').classList.toggle('-translate-x-full'); document.getElementById('map-overlay').classList.toggle('hidden');" class="md:hidden fixed top-4 left-4 z-30 p-2 bg-white rounded-xl shadow-lg hover:bg-gray-50 text-slate-800 transition-colors">
    <span class="material-symbols-outlined">menu</span>
 </button>
 
 <!-- Mobile Overlay -->
-<div id="map-overlay" class="fixed inset-0 bg-slate-900/40 z-40 hidden md:hidden transition-opacity" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full'); this.classList.toggle('hidden');"></div>
+<div id="map-overlay" class="fixed inset-0 bg-slate-900/40 z-40 hidden md:hidden transition-opacity" onclick="document.getElementById('left-panel').classList.toggle('-translate-x-full'); this.classList.toggle('hidden');"></div>
 
 <!-- ── Left Sidebar (Drawer on Mobile, Panel on Desktop) ──────── -->
-<aside id="sidebar" class="fixed left-0 top-0 z-50 flex flex-col bg-white dark:bg-slate-900 md:rounded-3xl h-full md:h-[calc(100vh-2rem)] w-[80wv] max-w-sm md:w-72 md:m-4 shadow-2xl font-plus-jakarta-sans text-sm transition-transform duration-300 transform -translate-x-full md:translate-x-0 no-scrollbar overflow-y-auto">
+<aside id="left-panel" class="fixed left-0 top-0 z-50 flex flex-col bg-white dark:bg-slate-900 md:rounded-3xl h-full md:h-[calc(100vh-2rem)] w-[80wv] max-w-sm md:w-72 md:m-4 shadow-2xl font-plus-jakarta-sans text-sm transition-transform duration-300 transform -translate-x-full md:translate-x-0 no-scrollbar overflow-y-auto">
     <div class="p-6">
         <div class="flex items-center gap-3 mb-8">
             <div class="w-10 h-10 bg-primary-container rounded-xl flex items-center justify-center text-white">
@@ -82,14 +82,14 @@
                 <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Optimization Engine</p>
             </div>
             <!-- Mobile Close Button inside Drawer -->
-            <button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('map-overlay').classList.toggle('hidden');" class="md:hidden w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded-lg">
+            <button onclick="document.getElementById('left-panel').classList.toggle('-translate-x-full'); document.getElementById('map-overlay').classList.toggle('hidden');" class="md:hidden w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded-lg">
                 <span class="material-symbols-outlined text-xl">close</span>
             </button>
         </div>
 
         <!-- Navigation -->
         <nav class="space-y-1">
-            <button type="button" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('map-overlay').classList.add('hidden');" class="w-full flex items-center gap-3 px-4 py-2.5 bg-primary-fixed/50 text-primary rounded-xl font-semibold text-sm hover:bg-primary-fixed/80 transition-colors">
+            <button type="button" onclick="document.getElementById('left-panel').classList.toggle('-translate-x-full'); document.getElementById('map-overlay').classList.add('hidden');" class="w-full flex items-center gap-3 px-4 py-2.5 bg-primary-fixed/50 text-primary rounded-xl font-semibold text-sm hover:bg-primary-fixed/80 transition-colors">
                 <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">conversion_path</span>
                 Route Builder
             </button>
@@ -106,9 +106,9 @@
 </aside>
 
 <!-- ── Main Panel (Bottom Sheet on Mobile, Floating on Desktop) ── -->
-<main id="bottom-sheet" class="fixed bottom-0 md:top-0 left-0 md:left-80 z-20 w-full md:w-96 max-h-[50vh] md:max-h-[calc(100vh-2rem)] md:m-4 overflow-y-auto no-scrollbar transition-transform duration-300 ease-out bg-white md:bg-surface-container-lowest/95 backdrop-blur-md rounded-t-3xl md:rounded-xl shadow-[0_-4px_25px_rgba(0,0,0,0.15)] md:shadow-2xl md:border md:border-white/20">
+<main class="fixed bottom-0 md:top-0 left-0 md:left-80 z-20 w-full md:w-96 max-h-[55vh] md:max-h-[calc(100vh-2rem)] md:m-4 overflow-y-auto no-scrollbar transition-all bg-white md:bg-surface-container-lowest/95 backdrop-blur-md rounded-t-3xl md:rounded-xl shadow-[0_-4px_25px_rgba(0,0,0,0.15)] md:shadow-2xl md:border md:border-white/20">
     <!-- Visual drag handle for mobile affordance -->
-    <div id="drag-handle" class="w-16 h-1.5 bg-outline-variant/60 rounded-full mx-auto mt-3 mb-1 md:hidden touch-none"></div>
+    <div class="w-10 h-1.5 bg-outline-variant/60 rounded-full mx-auto mt-3 mb-1 md:hidden"></div>
     
     <div class="p-5 md:p-6 flex flex-col gap-5 md:gap-6 h-full">
 
@@ -124,7 +124,7 @@
         </div>
 
         <!-- Form with HTMX -->
-        <form id="route-form" class="space-y-6" hx-post="/route" hx-target="#results-container" hx-indicator="#loading-skeleton">
+        <form id="route-form" class="space-y-6" hx-post="/route" hx-target="#results-container" hx-indicator="#loading-spinner">
             <div class="space-y-3">
                 <label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">location_on</span>
@@ -144,6 +144,13 @@
                         <span class="material-symbols-outlined text-xl">rocket_launch</span>
                         <span>Optimize Route</span>
                     </div>
+                    <div class="htmx-indicator flex items-center gap-2" id="loading-spinner">
+                        <svg class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" fill="currentColor"></path>
+                        </svg>
+                        <span>Calculating...</span>
+                    </div>
                 </button>
 
                 <button class="w-full h-11 border-2 border-outline-variant/50 text-on-surface-variant font-medium rounded-lg hover:bg-surface-container-low transition-colors flex items-center justify-center gap-2" type="button" id="clear-pins-btn">
@@ -152,16 +159,6 @@
                 </button>
             </div>
         </form>
-
-        <!-- Skeleton Loader (HTMX Indicator) -->
-        <div id="loading-skeleton" class="htmx-indicator w-full space-y-4">
-            <div class="h-6 w-1/3 bg-gray-200 rounded animate-pulse"></div>
-            <div class="space-y-3">
-                <div class="h-16 w-full bg-gray-200 rounded-xl animate-pulse"></div>
-                <div class="h-16 w-full bg-gray-200 rounded-xl animate-pulse"></div>
-                <div class="h-16 w-full bg-gray-200 rounded-xl animate-pulse"></div>
-            </div>
-        </div>
 
         <!-- Results container (HTMX swaps content here) -->
         <div class="mt-2 border-t border-surface-variant pt-6 hidden transition-all" id="results-container">
@@ -482,68 +479,6 @@
             resultsDiv.classList.remove('hidden');
         }
     });
-
-    // ── Vanilla JS: Bottom Sheet Swipe Logic ───────────────────
-    const bottomSheet = document.getElementById('bottom-sheet');
-    const dragHandle = document.getElementById('drag-handle');
-    let startY = 0;
-    let currentY = 0;
-    let isDragging = false;
-    // We snap the sheet out of view (e.g. translate down 30vh) if pulled far enough
-    const SNAP_THRESHOLD = 80; // pixels swiped down to trigger snap
-
-    if (dragHandle && window.innerWidth < 768) { // Only active on mobile
-        dragHandle.addEventListener('touchstart', (e) => {
-            startY = e.touches[0].clientY;
-            isDragging = true;
-            bottomSheet.style.transition = 'none'; // remove animation while dragging
-        }, { passive: true });
-
-        dragHandle.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            currentY = e.touches[0].clientY;
-            let deltaY = currentY - startY;
-
-            // Only allow dragging down (or up to 0 if we were minimized but we handle snap on end)
-            if (bottomSheet.dataset.minimized === "true") {
-                // If minimized, pulling up is negative delta
-                if (deltaY < 0) {
-                    bottomSheet.style.transform = `translateY(calc(30vh + ${deltaY}px))`;
-                }
-            } else {
-                // Not minimized, pull down is positive delta
-                if (deltaY > 0) {
-                    bottomSheet.style.transform = `translateY(${deltaY}px)`;
-                }
-            }
-        }, { passive: true });
-
-        dragHandle.addEventListener('touchend', (e) => {
-            if (!isDragging) return;
-            isDragging = false;
-            bottomSheet.style.transition = 'transform 0.3s ease-out'; // restore animation
-
-            let deltaY = currentY - startY;
-
-            if (bottomSheet.dataset.minimized === "true") {
-                // If minimized and pulled up past halfway
-                if (deltaY < -SNAP_THRESHOLD) {
-                    bottomSheet.style.transform = 'translateY(0)';
-                    bottomSheet.dataset.minimized = "false";
-                } else {
-                    bottomSheet.style.transform = 'translateY(30vh)'; // Snap back to min
-                }
-            } else {
-                // If normal and pulled down past halfway
-                if (deltaY > SNAP_THRESHOLD) {
-                    bottomSheet.style.transform = 'translateY(30vh)'; // Hide 30vh of height
-                    bottomSheet.dataset.minimized = "true";
-                } else {
-                    bottomSheet.style.transform = 'translateY(0)'; // Snap back up
-                }
-            }
-        });
-    }
 
 })();
 </script>
