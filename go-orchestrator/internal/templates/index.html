@@ -52,6 +52,13 @@
     .custom-scroll::-webkit-scrollbar { width: 4px; }
     .custom-scroll::-webkit-scrollbar-track { background: transparent; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #c1c6d6; border-radius: 999px; }
+    /* ── Mobile keyboard: keep bottom-sheet anchored to visual viewport ── */
+    @media (max-width: 767px) {
+        #bottom-sheet {
+            /* transition handles both transform-based snap AND keyboard repositioning */
+            transition: transform 0.3s ease-out, bottom 0.15s ease-out;
+        }
+    }
 </style>
 </head>
 <body class="bg-background font-body text-on-surface antialiased overflow-hidden">
@@ -99,8 +106,14 @@
 
         <!-- Navigation -->
         <nav class="space-y-1">
-            <!-- Desktop: toggles sidebar collapse. Mobile: hides overlay too. -->
-            <button type="button" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('map-overlay').classList.toggle('hidden');" class="w-full flex items-center gap-3 px-4 py-2.5 bg-primary-fixed/50 text-primary rounded-xl font-semibold text-sm hover:bg-primary-fixed/80 transition-colors">
+            <!--
+              Route Builder button behaviour:
+              - Desktop: toggles #bottom-sheet (the main content panel) collapsed/expanded
+              - Mobile:  also closes the sidebar drawer + overlay (since on mobile the
+                         sidebar is a full-screen drawer that overlaps everything)
+              The sidebar itself (#sidebar) is NOT toggled on desktop.
+            -->
+            <button type="button" id="btn-route-builder" class="w-full flex items-center gap-3 px-4 py-2.5 bg-primary-fixed/50 text-primary rounded-xl font-semibold text-sm hover:bg-primary-fixed/80 transition-colors">
                 <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">conversion_path</span>
                 Route Builder
             </button>
@@ -515,8 +528,80 @@
         }
     });
 
+    // ── Mobile: expand sheet and scroll skeleton into view on optimize ─
+    document.body.addEventListener('htmx:beforeRequest', function(e) {
+        if (window.innerWidth >= 768) return; // desktop only needs the indicator
+        var sheet = document.getElementById('bottom-sheet');
+        var skeleton = document.getElementById('loading-skeleton');
+        if (!sheet || !skeleton) return;
+        // Snap sheet back to full height so the skeleton is visible
+        sheet.style.transition = 'transform 0.3s ease-out';
+        sheet.style.transform = 'translateY(0)';
+        // Small delay so the sheet expands before we scroll
+        setTimeout(function() { skeleton.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 350);
+    });
+
 })();
 </script>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     Vanilla JS — Route Builder toggle + Mobile keyboard fix
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+    'use strict';
+
+    // ── Route Builder button: toggles #bottom-sheet on desktop ────
+    // On mobile it also dismisses the sidebar drawer + overlay.
+    var btnRouteBuilder = document.getElementById('btn-route-builder');
+    var bottomSheet     = document.getElementById('bottom-sheet');
+    var sidebar         = document.getElementById('sidebar');
+    var mapOverlay      = document.getElementById('map-overlay');
+
+    if (btnRouteBuilder && bottomSheet) {
+        btnRouteBuilder.addEventListener('click', function () {
+            // Always toggle the main content panel
+            bottomSheet.classList.toggle('hidden');
+
+            // On mobile also close the sidebar drawer
+            if (window.innerWidth < 768) {
+                if (sidebar)    sidebar.classList.add('-translate-x-full');
+                if (mapOverlay) mapOverlay.classList.add('hidden');
+            }
+        });
+    }
+
+    // ── Mobile virtual keyboard: keep #bottom-sheet above the keyboard ─
+    // When the on-screen keyboard appears, window.innerHeight shrinks but
+    // visualViewport.height gives the true visible area. We re-anchor the
+    // sheet's bottom edge so it never gets obscured by the keyboard.
+    if (window.visualViewport && window.innerWidth < 768) {
+        var sheet = document.getElementById('bottom-sheet');
+        if (!sheet) return;
+
+        function onViewportResize() {
+            var vv = window.visualViewport;
+            // Distance from the bottom of the visual viewport to the bottom of the layout viewport
+            var keyboardHeight = window.innerHeight - vv.height - vv.offsetTop;
+            if (keyboardHeight > 50) {
+                // Keyboard is open — lift the sheet above it
+                sheet.style.bottom = keyboardHeight + 'px';
+                // Ensure sheet is at a reasonable height (not minimised)
+                if (sheet.style.transform === 'translateY(35vh)') {
+                    sheet.style.transition = 'transform 0.2s ease-out';
+                    sheet.style.transform  = 'translateY(0)';
+                }
+            } else {
+                // Keyboard closed — return to bottom: 0
+                sheet.style.bottom = '0px';
+            }
+        }
+
+        window.visualViewport.addEventListener('resize', onViewportResize);
+        window.visualViewport.addEventListener('scroll', onViewportResize);
+    }
+
+}());</script>
 
 <!-- ═══════════════════════════════════════════════════════════════
      Vanilla JS — Mobile Bottom Sheet Swipe Gesture
