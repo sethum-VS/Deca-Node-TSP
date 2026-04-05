@@ -13,76 +13,11 @@
 <!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link rel="stylesheet" href="/css/tailwind.css">
 <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
-<script id="tailwind-config">
-    tailwind.config = {
-        darkMode: "class",
-        theme: {
-            extend: {
-                colors: {
-                    "on-primary": "#ffffff",
-                    "on-secondary-fixed": "#001a41",
-                    "on-primary-fixed-variant": "#004493",
-                    "outline": "#727785",
-                    "on-background": "#191c1f",
-                    "surface-container": "#eceef2",
-                    "outline-variant": "#c1c6d6",
-                    "tertiary-container": "#c55500",
-                    "on-tertiary-fixed": "#341100",
-                    "surface-variant": "#e1e2e6",
-                    "error-container": "#ffdad6",
-                    "primary-fixed": "#d8e2ff",
-                    "background": "#f8f9fd",
-                    "secondary": "#475e8c",
-                    "on-secondary-fixed-variant": "#2e4673",
-                    "on-primary-fixed": "#001a41",
-                    "surface-tint": "#005bc0",
-                    "tertiary-fixed-dim": "#ffb691",
-                    "on-secondary": "#ffffff",
-                    "on-surface-variant": "#414754",
-                    "surface-container-low": "#f2f4f8",
-                    "on-tertiary-fixed-variant": "#783100",
-                    "surface-container-highest": "#e1e2e6",
-                    "on-primary-container": "#ffffff",
-                    "primary": "#005bbf",
-                    "primary-container": "#1a73e8",
-                    "on-secondary-container": "#3d5481",
-                    "tertiary": "#9e4300",
-                    "on-error-container": "#93000a",
-                    "surface-container-high": "#e6e8ec",
-                    "inverse-surface": "#2d3134",
-                    "inverse-on-surface": "#eff1f5",
-                    "secondary-fixed": "#d8e2ff",
-                    "surface-container-lowest": "#ffffff",
-                    "primary-fixed-dim": "#adc7ff",
-                    "surface-dim": "#d8dade",
-                    "inverse-primary": "#adc7ff",
-                    "secondary-fixed-dim": "#afc7fb",
-                    "on-tertiary-container": "#0e0200",
-                    "secondary-container": "#b2c9fe",
-                    "surface-bright": "#f8f9fd",
-                    "on-error": "#ffffff",
-                    "on-surface": "#191c1f",
-                    "on-tertiary": "#ffffff",
-                    "surface": "#f8f9fd",
-                    "error": "#ba1a1a",
-                    "tertiary-fixed": "#ffdbcb"
-                },
-                fontFamily: {
-                    "headline": ["Plus Jakarta Sans"],
-                    "body": ["Inter"],
-                    "label": ["Inter"]
-                },
-                borderRadius: {"DEFAULT": "0.25rem", "lg": "0.75rem", "xl": "1.5rem", "full": "9999px"},
-            },
-        },
-    }
-</script>
 <style>
     .material-symbols-outlined {
         font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
@@ -127,40 +62,55 @@
 <!-- ── Leaflet Map (full-screen background) ──────────────────── -->
 <div class="fixed inset-0 z-0 w-screen h-screen" id="map"></div>
 
-<!-- ── Left Sidebar (branding) ──────────────────────────────── -->
-<aside class="fixed left-0 top-0 z-40 hidden md:flex flex-col bg-white dark:bg-slate-900 rounded-3xl m-4 h-[calc(100vh-2rem)] w-72 shadow-2xl shadow-slate-300/40 font-plus-jakarta-sans text-sm">
+<!-- Mobile Hamburger Menu Button -->
+<button onclick="document.getElementById('left-panel').classList.toggle('-translate-x-full'); document.getElementById('map-overlay').classList.toggle('hidden');" class="md:hidden fixed top-4 left-4 z-30 p-2 bg-white rounded-xl shadow-lg hover:bg-gray-50 text-slate-800 transition-colors">
+   <span class="material-symbols-outlined">menu</span>
+</button>
+
+<!-- Mobile Overlay -->
+<div id="map-overlay" class="fixed inset-0 bg-slate-900/40 z-40 hidden md:hidden transition-opacity" onclick="document.getElementById('left-panel').classList.toggle('-translate-x-full'); this.classList.toggle('hidden');"></div>
+
+<!-- ── Left Sidebar (Drawer on Mobile, Panel on Desktop) ──────── -->
+<aside id="left-panel" class="fixed left-0 top-0 z-50 flex flex-col bg-white dark:bg-slate-900 md:rounded-3xl h-full md:h-[calc(100vh-2rem)] w-[80wv] max-w-sm md:w-72 md:m-4 shadow-2xl font-plus-jakarta-sans text-sm transition-transform duration-300 transform -translate-x-full md:translate-x-0 no-scrollbar overflow-y-auto">
     <div class="p-6">
         <div class="flex items-center gap-3 mb-8">
             <div class="w-10 h-10 bg-primary-container rounded-xl flex items-center justify-center text-white">
                 <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">route</span>
             </div>
-            <div>
+            <div class="flex-1">
                 <h1 class="text-lg font-bold text-slate-900 dark:text-slate-50 leading-tight">Deca-Node TSP</h1>
                 <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Optimization Engine</p>
             </div>
+            <!-- Mobile Close Button inside Drawer -->
+            <button onclick="document.getElementById('left-panel').classList.toggle('-translate-x-full'); document.getElementById('map-overlay').classList.toggle('hidden');" class="md:hidden w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded-lg">
+                <span class="material-symbols-outlined text-xl">close</span>
+            </button>
         </div>
 
         <!-- Navigation -->
         <nav class="space-y-1">
-            <a href="/" class="flex items-center gap-3 px-4 py-2.5 bg-primary-fixed/50 text-primary rounded-xl font-semibold text-sm">
+            <button type="button" onclick="document.getElementById('left-panel').classList.toggle('-translate-x-full'); document.getElementById('map-overlay').classList.add('hidden');" class="w-full flex items-center gap-3 px-4 py-2.5 bg-primary-fixed/50 text-primary rounded-xl font-semibold text-sm hover:bg-primary-fixed/80 transition-colors">
                 <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">conversion_path</span>
                 Route Builder
-            </a>
+            </button>
         </nav>
     </div>
 
     <!-- Sidebar footer -->
     <div class="mt-auto p-6 border-t border-surface-variant">
-        <a href="#" class="flex items-center gap-3 px-4 py-2.5 text-on-surface-variant hover:bg-surface-container-low rounded-xl transition-colors text-sm">
+        <a href="https://github.com/sethum-VS/Deca-Node-TSP" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 px-4 py-2.5 text-on-surface-variant hover:bg-surface-container-low rounded-xl transition-colors text-sm">
             <span class="material-symbols-outlined text-lg">help</span>
             Support
         </a>
     </div>
 </aside>
 
-<!-- ── Main Panel (form + results) ──────────────────────────── -->
-<main class="fixed left-0 md:left-80 top-0 z-10 m-4 md:m-4 w-[calc(100%-2rem)] md:w-96 max-h-[calc(100vh-2rem)] overflow-y-auto custom-scroll">
-    <div class="bg-surface-container-lowest backdrop-blur-md bg-opacity-95 shadow-2xl rounded-xl border border-white/20 p-6 flex flex-col gap-6">
+<!-- ── Main Panel (Bottom Sheet on Mobile, Floating on Desktop) ── -->
+<main class="fixed bottom-0 md:top-0 left-0 md:left-80 z-20 w-full md:w-96 max-h-[55vh] md:max-h-[calc(100vh-2rem)] md:m-4 overflow-y-auto no-scrollbar transition-all bg-white md:bg-surface-container-lowest/95 backdrop-blur-md rounded-t-3xl md:rounded-xl shadow-[0_-4px_25px_rgba(0,0,0,0.15)] md:shadow-2xl md:border md:border-white/20">
+    <!-- Visual drag handle for mobile affordance -->
+    <div class="w-10 h-1.5 bg-outline-variant/60 rounded-full mx-auto mt-3 mb-1 md:hidden"></div>
+    
+    <div class="p-5 md:p-6 flex flex-col gap-5 md:gap-6 h-full">
 
         <!-- Header -->
         <div class="flex items-center justify-between">
@@ -178,12 +128,12 @@
             <div class="space-y-3">
                 <label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">location_on</span>
-                    Delivery Sequence
+                    Waypoint Sequence
                 </label>
-                <ul class="flex flex-col gap-2 p-4 bg-surface-container-low rounded-xl min-h-[120px] transition-all border-2 border-dashed border-outline-variant/30" id="stop-list">
+                <ul class="flex flex-col gap-2 p-4 bg-surface-container-low rounded-xl min-h-[120px] transition-all border-2 border-dashed border-outline-variant/30 no-scrollbar overflow-y-auto max-h-[40vh]" id="stop-list">
                     <li class="flex flex-col items-center justify-center h-full text-center py-6 text-on-surface-variant/60" id="empty-state">
                         <span class="material-symbols-outlined text-3xl mb-2">add_location_alt</span>
-                        <p class="text-sm px-4">Click on the map or search to drop up to 10 delivery stops.</p>
+                        <p class="text-sm px-4">Click on the map or search to drop up to 10 route stops.</p>
                     </li>
                 </ul>
             </div>

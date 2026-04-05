@@ -10,6 +10,11 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /server ./cmd/server
 
+# Download Tailwind CLI and build CSS
+RUN wget https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
+    && chmod +x tailwindcss-linux-x64 \
+    && ./tailwindcss-linux-x64 -i ./internal/static/css/input.css -o ./public/css/tailwind.css --minify
+
 # ── Runtime stage ────────────────────────────────────────
 FROM alpine:3.20
 
@@ -19,6 +24,7 @@ WORKDIR /app
 
 COPY --from=builder /server .
 COPY --from=builder /app/internal/templates ./internal/templates
+COPY --from=builder /app/public ./public
 
 EXPOSE 8080
 
