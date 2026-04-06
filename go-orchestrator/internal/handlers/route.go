@@ -82,16 +82,25 @@ func RouteHandler(w http.ResponseWriter, r *http.Request) {
 
 	// ── Read all "stop" values (multiple hidden inputs with same name) ──
 	rawStops := r.Form["stop"]
+	rawNames := r.Form["name"] // place names from reverse geocoding
 	var stops []StopInput
 	var originalInputs []string
+	var stopNames []string
 
-	for _, raw := range rawStops {
+	for i, raw := range rawStops {
 		raw = strings.TrimSpace(raw)
 		if raw == "" {
 			continue
 		}
 		originalInputs = append(originalInputs, raw)
 		stops = append(stops, parseStopInput(raw))
+
+		// Pair the name with this stop (fall back to raw coord string)
+		name := raw
+		if i < len(rawNames) && strings.TrimSpace(rawNames[i]) != "" {
+			name = strings.TrimSpace(rawNames[i])
+		}
+		stopNames = append(stopNames, name)
 	}
 
 	if len(stops) < 2 {
@@ -141,7 +150,7 @@ func RouteHandler(w http.ResponseWriter, r *http.Request) {
 
 	// ── Build HTML response fragment + route drawing script ──
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, buildResultHTML(optimized))
+	fmt.Fprint(w, buildResultHTML(optimized, stops, stopNames))
 }
 
 // parseStopInput applies smart parsing:
@@ -203,10 +212,21 @@ func callJavaService(stops []StopInput) (*OptimizeResponse, *ErrorResponse, erro
 }
 
 // buildResultHTML constructs the HTMX HTML fragment for the result area.
-// Includes the metrics cards, the optimized stop list, and a <script>
-// tag that calls drawOptimizedRoute() to render the polyline on the map.
-func buildResultHTML(resp *OptimizeResponse) string {
+// Includes the metrics cards, the optimized stop list with place names,
+// and a <script> tag that calls drawOptimizedRoute() to render the polyline.
+func buildResultHTML(resp *OptimizeResponse, originalStops []StopInput, originalNames []string) string {
 	var sb strings.Builder
+
+	// Build a lookup map: "lat,lng" → place name from the original input order.
+	// We match optimized route coordinates back to the original names by
+	// rounding to 4 decimal places (~11m precision, plenty for matching).
+	nameByCoord := make(map[string]string)
+	for i, s := range originalStops {
+		if s.Lat != nil && s.Lng != nil && i < len(originalNames) {
+			key := fmt.Sprintf("%.4f,%.4f", *s.Lat, *s.Lng)
+			nameByCoord[key] = originalNames[i]
+		}
+	}
 
 	// ── Metrics cards ─────────────────────────────────────────
 	sb.WriteString(`<div class="space-y-4">`)
@@ -246,7 +266,13 @@ func buildResultHTML(resp *OptimizeResponse) string {
 	sb.WriteString(`<span class="material-symbols-outlined text-sm">route</span> Optimized Sequence</p>`)
 
 	for i, c := range resp.OptimizedRoute {
-		label := c.Label
+		// Try to find the place name from our original input names
+		key := fmt.Sprintf("%.4f,%.4f", c.Lat, c.Lng)
+		label := nameByCoord[key]
+		if label == "" {
+			// Fall back to the Java-side label, or a generic "Stop N"
+			label = c.Label
+		}
 		if label == "" {
 			label = fmt.Sprintf("Stop %d", i+1)
 		}
