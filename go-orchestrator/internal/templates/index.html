@@ -2,7 +2,7 @@
 <html class="light" lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual-viewport" name="viewport"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual" name="viewport"/>
 <title>Deca-Node | TSP Optimization Engine</title>
 <meta name="description" content="Deca-Node: Real-time delivery route optimization using GraphHopper and jsprit TSP solver"/>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -313,9 +313,11 @@
             icon: createMarkerIcon(stopCount)
         }).addTo(map);
         marker.bindPopup(`<b>Stop ${stopCount}</b><br>${displayLabel}`);
+        // Store the place name on the marker object so rebuildStopList can reuse it
+        marker._placeName = displayLabel;
         markers.push(marker);
 
-        // Create list item + hidden input
+        // Create list item + hidden inputs (coord + name)
         const li = document.createElement('li');
         li.className = 'stop-item flex items-center gap-3 py-2 px-3 bg-white rounded-lg shadow-sm border border-outline-variant/20';
         li.innerHTML = `
@@ -328,6 +330,7 @@
                 <span class="material-symbols-outlined text-base">close</span>
             </button>
             <input type="hidden" name="stop" value="${coordStr}"/>
+            <input type="hidden" name="name" value="${displayLabel}"/>
         `;
         stopList.appendChild(li);
 
@@ -366,7 +369,9 @@
         markers.forEach((marker, i) => {
             const latlng = marker.getLatLng();
             marker.setIcon(createMarkerIcon(i + 1));
-            marker.setPopupContent(`<b>Stop ${i + 1}</b><br>${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`);
+            // Use stored place name if available
+            const placeName = marker._placeName || (latlng.lat.toFixed(6) + ', ' + latlng.lng.toFixed(6));
+            marker.setPopupContent(`<b>Stop ${i + 1}</b><br>${placeName}`);
 
             const coordStr = latlng.lat.toFixed(6) + ', ' + latlng.lng.toFixed(6);
             const li = document.createElement('li');
@@ -374,13 +379,14 @@
             li.innerHTML = `
                 <div class="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-white text-xs font-bold shrink-0">${i + 1}</div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-on-surface truncate">${coordStr}</p>
+                    <p class="text-sm font-medium text-on-surface truncate">${placeName}</p>
                     <p class="text-[11px] text-on-surface-variant">${coordStr}</p>
                 </div>
                 <button type="button" class="remove-stop shrink-0 w-7 h-7 flex items-center justify-center text-on-surface-variant/50 hover:text-error hover:bg-error-container rounded-full transition-colors" data-index="${i}">
                     <span class="material-symbols-outlined text-base">close</span>
                 </button>
                 <input type="hidden" name="stop" value="${coordStr}"/>
+                <input type="hidden" name="name" value="${placeName}"/>
             `;
             stopList.appendChild(li);
 
@@ -391,9 +397,37 @@
     }
 
     // ── Map Click Listener ─────────────────────────────────────
+    // Reverse-geocode the clicked location via Nominatim, then add the stop
+    // with the resolved place name. Falls back to raw coordinates on error.
     map.on('click', function(e) {
         if (stopCount >= MAX_STOPS) return;
-        addStop(e.latlng.lat, e.latlng.lng);
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+
+        // Immediately add with coords as placeholder while we fetch
+        const tempLabel = lat.toFixed(6) + ', ' + lng.toFixed(6);
+
+        fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=14', {
+            headers: { 'Accept-Language': 'en' }
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            var name = 'Unknown Location';
+            if (data && data.address) {
+                var a = data.address;
+                name = a.suburb || a.village || a.town || a.city || a.county || a.state || name;
+                // Append the road name if available for more context
+                if (a.road) name = a.road + ', ' + name;
+            } else if (data && data.display_name) {
+                // Fallback: use the first part of display_name
+                name = data.display_name.split(',').slice(0, 2).join(',');
+            }
+            addStop(lat, lng, name);
+        })
+        .catch(function() {
+            // Nominatim failed — add with raw coordinates
+            addStop(lat, lng);
+        });
     });
 
     // ── Clear Button ───────────────────────────────────────────
