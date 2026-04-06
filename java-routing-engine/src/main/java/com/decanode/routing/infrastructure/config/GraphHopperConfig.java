@@ -53,7 +53,7 @@ public class GraphHopperConfig {
 
         // ── RDA Hierarchical Priority Custom Model ──────────────────
         // Tuned for Sri Lankan road network (RDA classification):
-        //   E-Class : MOTORWAY, MOTORWAY_LINK  (Expressways)
+        //   E-Class : MOTORWAY                 (Expressways + ramps)
         //   A-Class : TRUNK, PRIMARY           (National highways)
         //   B-Class : SECONDARY                (Provincial roads)
         //   C/D-Class: TERTIARY, UNCLASSIFIED, RESIDENTIAL (Local roads)
@@ -61,14 +61,14 @@ public class GraphHopperConfig {
         customModel.setDistanceInfluence(20.0);
 
         // 1. Hierarchical Speed Limits based on practical Sri Lankan averages
-        customModel.addToSpeed(If("road_class == MOTORWAY || road_class == MOTORWAY_LINK", LIMIT, "100"));
+        customModel.addToSpeed(If("road_class == MOTORWAY", LIMIT, "100"));
         customModel.addToSpeed(ElseIf("road_class == TRUNK || road_class == PRIMARY", LIMIT, "70"));
         customModel.addToSpeed(ElseIf("road_class == SECONDARY", LIMIT, "50"));
         customModel.addToSpeed(ElseIf("road_class == TERTIARY || road_class == UNCLASSIFIED || road_class == RESIDENTIAL", LIMIT, "40"));
         customModel.addToSpeed(Else(LIMIT, "30"));
 
         // 2. Hierarchical Priority Gradient (smooth decision-making curve)
-        customModel.addToPriority(If("road_class == MOTORWAY || road_class == MOTORWAY_LINK", MULTIPLY, "1.0"));
+        customModel.addToPriority(If("road_class == MOTORWAY", MULTIPLY, "1.0"));
         customModel.addToPriority(ElseIf("road_class == TRUNK || road_class == PRIMARY", MULTIPLY, "0.85"));
         customModel.addToPriority(ElseIf("road_class == SECONDARY", MULTIPLY, "0.70"));
         customModel.addToPriority(Else(MULTIPLY, "0.50"));
