@@ -82,7 +82,7 @@ func RouteHandler(w http.ResponseWriter, r *http.Request) {
 
 	// ── Read all "stop" values (multiple hidden inputs with same name) ──
 	rawStops := r.Form["stop"]
-	rawNames := r.Form["name"] // place names from reverse geocoding
+	rawNames := r.Form["names[]"] // place names from reverse geocoding
 	var stops []StopInput
 	var originalInputs []string
 	var stopNames []string

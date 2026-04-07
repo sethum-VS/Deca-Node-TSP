@@ -132,7 +132,7 @@
 </aside>
 
 <!-- ── Main Panel (Bottom Sheet on Mobile, Floating on Desktop) ── -->
-<main id="bottom-sheet" class="fixed bottom-0 md:top-0 left-0 md:left-80 z-20 w-full md:w-96 max-h-[50vh] md:max-h-[calc(100vh-2rem)] md:m-4 overflow-y-auto no-scrollbar transition-transform duration-300 ease-out bg-white md:bg-surface-container-lowest/95 backdrop-blur-md rounded-t-3xl md:rounded-xl shadow-[0_-4px_25px_rgba(0,0,0,0.15)] md:shadow-2xl md:border md:border-white/20">
+<main id="bottom-sheet" class="fixed bottom-0 md:top-0 left-0 md:left-80 z-20 w-full md:w-96 h-[50dvh] md:h-auto md:max-h-[calc(100vh-2rem)] md:m-4 overflow-y-auto no-scrollbar transition-all duration-300 ease-out bg-white md:bg-surface-container-lowest/95 backdrop-blur-md rounded-t-3xl md:rounded-xl shadow-[0_-4px_25px_rgba(0,0,0,0.15)] md:shadow-2xl md:border md:border-white/20">
 
     <!-- ── Expanded touch zone: pill + title + search bar ──────── -->
     <!-- touch-none prevents native browser scroll-handling on this strip -->
@@ -330,7 +330,7 @@
                 <span class="material-symbols-outlined text-base">close</span>
             </button>
             <input type="hidden" name="stop" value="${coordStr}"/>
-            <input type="hidden" name="name" value="${displayLabel}"/>
+            <input type="hidden" name="names[]" value="${displayLabel}"/>
         `;
         stopList.appendChild(li);
 
@@ -386,7 +386,7 @@
                     <span class="material-symbols-outlined text-base">close</span>
                 </button>
                 <input type="hidden" name="stop" value="${coordStr}"/>
-                <input type="hidden" name="name" value="${placeName}"/>
+                <input type="hidden" name="names[]" value="${placeName}"/>
             `;
             stopList.appendChild(li);
 
@@ -733,49 +733,49 @@
     const dragHeader = document.getElementById('sheet-drag-header'); // expanded touch zone
     if (!sheet || !dragHeader) return;
 
-    const SNAP_THRESHOLD = 80;    // px drag-down to trigger minimise
-    const MINIMISED_Y    = '35vh'; // translateY when minimised
-
     let startY     = 0;
     let isDragging = false;
-    let minimised  = false;
 
     dragHeader.addEventListener('touchstart', function (e) {
         // Don't start drag if the user is tapping inside the search input
         if (e.target.id === 'search-input') return;
-        startY     = e.touches[0].clientY;
+        startY = e.touches[0].clientY;
         isDragging = true;
         sheet.style.transition = 'none';
+
+        // Provide an explicit starting height for pure drag calculation
+        const r = sheet.getBoundingClientRect();
+        sheet.style.height = r.height + 'px';
     }, { passive: true });
 
     dragHeader.addEventListener('touchmove', function (e) {
         if (!isDragging) return;
-        const deltaY = e.touches[0].clientY - startY;
-
-        if (!minimised && deltaY > 0) {
-            sheet.style.transform = 'translateY(' + deltaY + 'px)';
-        } else if (minimised && deltaY < 0) {
-            sheet.style.transform = 'translateY(calc(' + MINIMISED_Y + ' + ' + deltaY + 'px))';
-        }
+        const screenHeight = window.innerHeight;
+        // Instead of float transform, adjust physical bottom-aligned height so it feels weighty
+        let newHeight = screenHeight - e.touches[0].clientY;
+        sheet.style.height = newHeight + 'px';
     }, { passive: true });
 
     dragHeader.addEventListener('touchend', function (e) {
         if (!isDragging) return;
         isDragging = false;
-        sheet.style.transition = 'transform 0.3s ease-out';
+        sheet.style.transition = 'all 0.3s ease-out';
 
-        const deltaY = e.changedTouches[0].clientY - startY;
+        const screenHeight = window.innerHeight;
+        const currentY = sheet.getBoundingClientRect().top;
+        const percentage = (currentY / screenHeight) * 100;
 
-        if (!minimised && deltaY > SNAP_THRESHOLD) {
-            sheet.style.transform = 'translateY(' + MINIMISED_Y + ')';
-            minimised = true;
-        } else if (minimised && deltaY < -SNAP_THRESHOLD) {
-            sheet.style.transform = 'translateY(0)';
-            minimised = false;
+        sheet.style.transform = ''; // Clear manual drag transforms if any
+
+        if (percentage < 30) {
+            // Snapped to Top (Full Screen)
+            sheet.style.height = '92dvh'; 
+        } else if (percentage >= 30 && percentage < 70) {
+            // Snapped to Middle
+            sheet.style.height = '50dvh';
         } else {
-            sheet.style.transform = minimised
-                ? 'translateY(' + MINIMISED_Y + ')'
-                : 'translateY(0)';
+            // Snapped to Bottom (Collapsed)
+            sheet.style.height = '15dvh';
         }
     });
 }());
