@@ -32,6 +32,17 @@ Browser (HTMX) ─→ Go Orchestrator (:8080) ─→ Java Routing Engine (:8081)
 5.  Java returns the optimized coordinate sequence to Go.
 6.  Go returns an HTMX out-of-band response containing JavaScript instructions to render the polyline onto Leaflet.js.
 
+### Custom Routing Engine
+
+This system employs a highly tuned custom engine model to determine the most optimal and time-efficient route for every destination.
+
+*   **TSP Optimization**: It first solves the Traveling Salesperson Problem (TSP) to determine the absolute best sequence of delivery stops.
+*   **Hierarchical Road Prioritization**: It then calculates the physical route by utilizing Sri Lanka's graded road infrastructure, starting with expressways and cascading down to local roads.
+*   **Time-Based Penalty Mechanism**: Instead of relying solely on the shortest physical distance, the system incorporates a custom priority penalty mechanism based on the highest speed limit of each road category (Expressways > A-Class > B-Class > Minor Roads).
+
+This approach ensures the identification of the fastest possible route by actively favoring highways over shorter, congested local roads, achieving highly optimized logistics even without the use of real-time traffic data.
+
+
 ### OSM/GraphHopper vs. Google Maps API
 
 The OSM/GraphHopper stack replaces commercial mapping APIs to:
@@ -71,7 +82,6 @@ docker-compose up --build
 Navigate to [http://localhost:8080](http://localhost:8080)
 
 Enter delivery stops as:
-- Coordinates: `6.9271, 79.8612`
 - Addresses: `Lotus Tower, Colombo`
 - Map clicks
 
@@ -87,17 +97,6 @@ Enter delivery stops as:
 | Geocoding | Photon API (Komoot) |
 | Infrastructure | Docker Compose |
 
-## Development Roadmap
-
-| Sprint | Objective |
-| --- | --- |
-| Sprint 1 | Repository Initialization, DDD Directory Skeleton, Go Orchestrator HTTP Setup |
-| Sprint 2 | Java Microservice Initialization, Docker Network Integration |
-| Sprint 3 | GraphHopper & Jsprit Integration, OSM Dataset Ingestion, 5-step Pipeline (Geocode, Snap, Matrix, Solve, Respond) |
-| Sprint 4 | Leaflet Map Integration, Tailwind CSS UI, Map-based Pin Drops, Route Polylines |
-| Sprint 5 | Production CI/CD to GCP — Cloud Run (WIF), Artifact Registry, Firebase Hosting |
-| Sprint 6 | Pipeline Orchestration — Serialized deployments, VPC networking, Firebase routing fix |
-| Sprint 7 | Road Network Geometry — Real road paths from GraphHopper replace straight-line polylines |
 
 ## Deployment & CI/CD
 
@@ -108,8 +107,6 @@ The project uses a two-tier GitHub Actions pipeline:
 Triggers on every push to feature branches and on pull requests targeting `main`. Validates:
 - **Java**: Compiles the routing engine via `mvn clean package -DskipTests`
 - **Go**: Builds all packages via `go build ./...` and runs `go vet`
-
-> **Note:** Branch protection rules should be configured on `main` to require these status checks to pass before merging.
 
 ### Production — Deploy to GCP (`.github/workflows/deploy-production.yml`)
 
