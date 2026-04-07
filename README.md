@@ -108,8 +108,6 @@ Triggers on every push to feature branches and on pull requests targeting `main`
 - **Java**: Compiles the routing engine via `mvn clean package -DskipTests`
 - **Go**: Builds all packages via `go build ./...` and runs `go vet`
 
-> **Note:** Branch protection rules should be configured on `main` to require these status checks to pass before merging.
-
 ### Production — Deploy to GCP (`.github/workflows/deploy-production.yml`)
 
 Triggers **only** on push to `main`. Deploys sequentially with `needs:` dependencies:
