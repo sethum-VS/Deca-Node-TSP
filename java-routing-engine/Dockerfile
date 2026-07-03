@@ -39,7 +39,5 @@ COPY --from=builder /app/target/routing-engine-*.jar app.jar
 # Copy the pre-built graph cache (no PBF needed at runtime)
 COPY --from=builder /data/graph-cache /data/graph-cache
 
-EXPOSE 8081
-
 # JVM memory is set via JAVA_TOOL_OPTIONS in docker-compose.yml or Cloud Run
 ENTRYPOINT ["java", "-jar", "app.jar"]

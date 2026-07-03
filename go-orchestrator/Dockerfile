@@ -30,8 +30,4 @@ COPY --from=builder /server .
 COPY --from=builder /app/internal/templates ./internal/templates
 COPY --from=builder /app/public ./public
 
-EXPOSE 8080
-
-ENV PORT=8080
-
 CMD ["./server"]
